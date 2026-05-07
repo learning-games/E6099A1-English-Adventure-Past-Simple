@@ -1,0 +1,3406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>English Adventure Psat Simple ป.4-6</title>
+<style>
+
+/* ===== ฟอนต์รวมหน้า ===== */
+@font-face{
+  font-family: 'MyGameFont';
+  src: url('image/THSarabunNew.woff2') format('woff2'),
+       url('image/THSarabunNew.woff') format('woff'),
+       url('image/THSarabunNew.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face{
+  font-family: 'MyGameFont';
+  src: url('image/THSarabunNewBold.woff2') format('woff2'),
+       url('image/THSarabunNewBold.woff') format('woff'),
+       url('image/THSarabunNewBold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+html, body, button, input, select, textarea, .pill, .btn, .btn-mini,
+.levelBtn, #startTitle, #countdown, .label, #timer {
+  font-family: 'MyGameFont', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+
+:root{
+  --glass: rgba(0,0,0,.45);
+  --ok: #10b981;
+  --bad: #ef4444;
+  --hud-top: 15px;
+  --safe-top: env(safe-area-inset-top, 0px);
+
+  /* ปรับความเร็วเอฟเฟกต์ fade ได้ที่นี่ */
+  --fade-ms: 600ms;   /* เช่น 400ms / 800ms */
+}
+
+/* ===== Game Background Layer (สุ่มพื้นหลังเมื่อเข้าด่าน) ===== */
+#gameBgLayer{
+  position:fixed;
+  inset:0;
+  background-size:cover;
+  background-position:center center;
+  background-repeat:no-repeat;
+  background-attachment:fixed;
+  z-index:0;
+  opacity:0;
+  transition:opacity 0.5s ease;
+  pointer-events:none;
+}
+#gameBgLayer.active{
+  opacity:1;
+}
+
+*{ box-sizing:border-box }
+html,body{ height:100%; margin:0 }
+body{
+  background: url("image/background2.png") center center / cover no-repeat fixed !important;
+  overflow:hidden; color:#fff;
+}
+#game{ position:relative; width:100vw; height:100vh; overflow:hidden }
+
+/* ===== HUD ===== */
+.hud{
+  position:fixed;
+  inset: calc(var(--safe-top) + var(--hud-top)) 5px auto 38px !important;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  justify-content:space-between;
+  pointer-events:none;
+  z-index:40000;
+}
+
+/* === ซ่อน/แสดง HUD และนาฬิกา === */
+body:not(.in-game):not(.prestart) .hud { display: none !important; }
+body:not(.in-game):not(.prestart) #clock { display: none !important; }
+
+/* === ซ่อน muteBtn/fsBtn บนหน้า welcome/landing (ก่อนเลือกด่าน) === */
+body:not(.in-game):not(.prestart) #muteBtn,
+body:not(.in-game):not(.prestart) #fsBtn { display: none !important; }
+
+/* ===== Game Clock (Top Center, uses existing timer) ===== */
+#clock.clock-pill{
+  position:fixed;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:16000;
+  pointer-events:none;
+
+  --clock-size: clamp(30px, 2dvw, 999px);
+  font-size: var(--clock-size);
+
+  background: var(--glass);
+  backdrop-filter: blur(6px);
+  color:#fff;
+  font-weight:1000;
+  line-height:1;
+  border-radius:999px;
+  padding:8px 16px;
+  box-shadow:0 4px 18px rgba(0,0,0,.25);
+  text-shadow:0 3px 10px rgba(0,0,0,.55);
+}
+
+.pill{ background:var(--glass); backdrop-filter:blur(6px); padding:8px 12px; border-radius:999px; box-shadow:0 4px 18px rgba(0,0,0,.25) }
+#timer{ font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:.5px; font-size:20px }
+.btn-mini{ pointer-events:auto; background:#1f2937; color:#fff; border:none; border-radius:12px; padding:8px 12px; font-weight:800; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,.25) }
+.btn-mini:hover{ filter:brightness(1.1) }
+
+/* ===== Hover ปุ่มระบบ ===== */
+
+.btn-mini,
+#muteBtn,
+#fsBtn{
+  transition:
+    transform .15s ease,
+    filter .15s ease,
+    box-shadow .15s ease;
+}
+
+.btn-mini:hover,
+#muteBtn:hover,
+#fsBtn:hover{
+  transform:scale(1.08);
+
+  filter:brightness(1.12);
+
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.45),
+    0 0 20px rgba(255,255,255,.18);
+}
+
+.score-label{ display:none !important; }
+
+
+/* กล่องคะแนนเป็นตัวเลข ปรับขนาดด้วย --score-size */
+.pill.gold{
+    --score-size: clamp(20px, 2dvw, 999px);
+  background: var(--glass);
+  border-radius: 12px;
+  padding: 6px 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(var(--score-size) * 1.6);
+  box-shadow: 0 4px 18px rgba(0,0,0,.25);
+}
+.pill.gold .num{
+  font-size: var(--score-size);
+  font-weight: 1000;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .5px;
+}
+
+@media (max-width:480px){ .pill.gold{ --gold-size:24px; --gold-cols:8; --gold-rows:2 } }
+
+/* ===== Welcome / Landing ===== */
+#landing{ position:fixed; inset:0; display:flex; flex-direction:column; gap:22px; align-items:center; justify-content:center; background:url("image/background2.png") center/cover no-repeat fixed !important; z-index:20000; transition:opacity .3s ease }
+#landing.hide{ opacity:0; pointer-events:none; visibility:hidden }
+#landing .brand{ width:min(92vw,1100px) }
+#landing .brand img{ width:100%; height:auto; display:block; filter:drop-shadow(0 10px 30px rgba(0,0,0,.6)) }
+#welcome{
+  position:fixed;
+  inset:0;
+  background:url("image/welcome.png") center/cover no-repeat fixed;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  z-index:25000;
+  transition:opacity .3s ease;
+  overflow:hidden;
+}
+
+#welcome.hide{
+  opacity:0;
+  pointer-events:none;
+  visibility:hidden;
+}
+
+#welcome .welcome-content{ 
+  position:relative;
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+/* ===== Responsive Scale Group ===== */
+
+#welcome .welcome-inner{
+  position:relative;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+
+  gap:clamp(10px,2dvh,24px);
+
+  transform:scale(var(--welcome-scale,1));
+  transform-origin:center center;
+
+  will-change:transform;
+}
+
+#landing .landing-inner{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+
+  gap:clamp(12px,2.4dvh,26px);
+
+  transform:scale(var(--landing-scale,1));
+  transform-origin:center center;
+
+  will-change:transform;
+}
+
+#welcome .brand{
+  width:min(90vw,1000px);
+  margin-bottom:100px;
+  display:flex;
+  justify-content:center;
+}
+
+#welcome .brand img{
+  width:min(150%, 1400px);
+  max-width:150%;
+  height:auto;
+  max-height:75dvh;
+  object-fit:contain;
+  display:block;
+  animation:pulse 3s infinite ease-in-out;
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.45));
+}
+
+#welcome #enterBtn{
+  position:absolute;
+  left:50%;
+  bottom:12dvh;
+
+  transform:translateX(-50%);
+
+  padding:12px 28px;
+  font-size:clamp(22px,4vw,36px);
+  font-weight:1000;
+  letter-spacing:.2px;
+
+  border:0;
+  border-radius:16px;
+
+  color:#fff;
+  background:rgba(0,0,0,.55);
+
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+
+  cursor:pointer;
+
+  backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.18);
+
+  transition:
+    transform .15s ease,
+    filter .15s ease,
+    box-shadow .15s ease;
+}
+
+#welcome #enterBtn:hover{
+  transform:translateX(-50%) scale(1.08);
+
+  filter:brightness(1.12);
+
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.45),
+    0 0 20px rgba(255,255,255,.18);
+}
+
+#welcome #enterBtn:active{
+  transform:translateX(-50%) scale(0.95);
+
+  filter:brightness(.95);
+}
+
+
+
+@keyframes pulse{ 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.04);opacity:.9} }
+.level-menu{ display:flex; flex-direction:column; gap:14px; width:min(92vw,640px) }
+.levelBtn{
+width:82%;
+max-width:520px;
+min-width:280px;
+margin:0 auto;
+
+  padding:10px 16px;
+
+  font-size:clamp(20px,4vw,34px);
+  font-weight:1000;
+  letter-spacing:.2px;
+
+  border:0;
+  border-radius:14px;
+
+  color:#fff;
+  background:rgba(0,0,0,.55);
+
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+
+  cursor:pointer;
+  text-align:center;
+
+  border:1px solid rgba(255,255,255,.18);
+
+  backdrop-filter:blur(6px);
+
+  transition:
+    transform .15s ease,
+    filter .15s ease,
+    box-shadow .15s ease;
+}
+
+.levelBtn:hover{
+  transform:scale(1.08);
+
+  filter:brightness(1.12);
+
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.45),
+    0 0 20px rgba(255,255,255,.18);
+}
+
+#startScreen{
+  position:fixed;
+  inset:0;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.9);
+  z-index:30000;
+  text-align:center;
+  padding:24px;
+}
+
+#startBtn{
+  margin-top:24px;
+  padding:16px 46px;
+  border:0;
+  border-radius:18px;
+  font-size:clamp(28px, 4dvw, 52px);
+  font-weight:1000;
+  cursor:pointer;
+  background:linear-gradient(180deg, #fde047, #f59e0b);
+  color:#fff;
+  text-shadow:0 3px 8px rgba(0,0,0,.45);
+  box-shadow:0 12px 30px rgba(0,0,0,.38);
+  transition:transform .15s ease, filter .15s ease, box-shadow .15s ease;
+}
+
+#startBtn:hover{
+  transform:scale(1.08);
+  filter:brightness(1.08);
+  box-shadow:0 16px 38px rgba(0,0,0,.48);
+}
+
+#startTitle{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  text-align:center;
+}
+
+/* หัวข้อ */
+.missionTitle{
+  font-size:clamp(32px,5.5dvw,64px);
+  font-weight:1000;
+}
+
+.missionLine{
+  font-size:clamp(22px,3.5dvw,36px);
+  font-weight:800;
+  opacity:1;
+  text-align:left;
+
+  width:auto;
+  max-width:none;
+
+  white-space:nowrap;
+}
+
+#countdown{ display:none; font-size:clamp(56px,12vw,120px); font-weight:1000; line-height:1; margin-top:8px }
+
+/* ===== ภาพประกอบคำถาม ===== */
+#qImg{
+  position:absolute;
+  top: 50%;
+  left: 50%;
+  max-width: min(60vw, 720px);
+  max-height: min(48vh, 480px);
+  width:auto; height:auto;
+  display:none;
+  z-index:9;
+  filter: drop-shadow(0 10px 30px rgba(0,0,0,.45));
+  border-radius: 12px;
+  transform: translate(-50%, -50%)
+             translate(var(--fxX, 0), var(--fxY, 0))
+             scale(var(--fxS, 1));
+  transition:
+    transform 520ms cubic-bezier(.2,.9,.2,1),
+    opacity 520ms;
+}
+
+/* ===== กล่องคำถาม ===== */
+#questionBox{
+  position: fixed;
+  top: var(--qTop);
+  left: 50%;
+  transform: translate(-50%, 0)
+             translate(var(--fxX, 0), var(--fxY, 0))
+             scale(var(--fxS, 1));
+  background:none; border:none; padding:0;
+  font-size: clamp(32px, 11dvw, 110px);
+  font-weight:1000; color:#fff;
+  text-shadow:0 4px 12px rgba(0,0,0,.8);
+  z-index: 10;
+  white-space:pre; overflow:visible; text-align:center;
+  transition: transform 520ms cubic-bezier(.2,.9,.2,1), opacity 520ms;
+}
+
+#questionBox.pre-drop{
+  top: calc(var(--qTop) - 40px);
+  opacity: 0;
+}
+
+/* ===== ตัวเลือกแบบวงกลม 2 ปุ่ม ===== */
+.option.circle{
+  position:absolute;
+  width: var(--c-sz, clamp(120px, 18vw, 220px));
+  height: var(--c-sz, clamp(120px, 18vw, 220px));
+  border-radius:50%;
+  border:10px solid transparent;
+  background:
+    radial-gradient(35% 35% at 30% 30%, rgba(255,255,255,.18), rgba(255,255,255,0) 60%) padding-box,
+    var(--ring, linear-gradient(130deg,#999,#666)) border-box;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);
+  display:grid; place-items:center;
+  cursor:pointer; user-select:none; z-index:12;
+  transition: top 800ms cubic-bezier(.2,.9,.2,1),
+             left 800ms cubic-bezier(.2,.9,.2,1);
+}
+.option.circle .label{
+  font-weight:1000;
+  font-size:clamp(18px,2.2vw,32px);
+  color:#fff;
+  text-align:center;
+  text-shadow:0 3px 10px rgba(0,0,0,.6);
+  padding:0 10px; line-height:1.15
+}
+.option.circle.live {
+  background: rgba(0,0,0,.55);
+  border: 10px solid #d97706;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.option.circle.non {
+  background: rgba(0,0,0,.55);
+  border: 10px solid #a855f7;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.option.circle { --c-sz: clamp(140px, 20vw, 240px); }
+
+.option.circle.in-anim {
+  animation: zoomInBounce 650ms cubic-bezier(.25,.8,.25,1) forwards;
+  transform: scale(0.3);
+  opacity: 0;
+}
+@keyframes zoomInBounce {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.option.circle .label {
+    font-size: clamp(32px, 4vw, 60px);
+  font-weight: 900;
+  letter-spacing: .5px;
+  color: #fff;
+}
+.option.circle.glow{
+  filter: drop-shadow(0 0 10px rgba(250,204,21,.70)) drop-shadow(0 0 18px rgba(250,204,21,.55));
+}
+
+/* ===== เอฟเฟกต์/Toast/ภาพผลลัพธ์ ===== */
+#flash{ position:fixed; inset:0; background:transparent; pointer-events:none; z-index:17000 }
+.flash-clear{ animation: flashC 2000ms ease-out }
+@keyframes flashC{ 0%{background:rgba(255,255,255,.55)} 100%{background:transparent} }
+
+/* =========================
+   ✅ Stage 3: Clash (Knight vs Monster)
+   4 steps same speed (ปรับแยกทีหลังได้)
+   ========================= */
+:root{
+  --stage3-step-ms: 700ms;        /* เวลาเคลื่อน/ค้าง (step1-3) */
+  --stage3-fade-ms: 650ms;        /* เวลาเฟดของรูป */
+  --stage3-emoji-hold-ms: 450ms;  /* เวลาให้อีโมจิค้างหลังรูปเริ่มเฟด */
+  --stage3-emoji-fade-ms: 500ms;  /* เวลาเฟดของอีโมจิ */
+  --clash-edge-pad: 8px;
+}
+
+.stage3-wrap{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:19000;
+}
+
+.stage3-img{
+  position:fixed;
+  top:60%;
+  width: min(52dvw, 560px);
+  height:auto;
+  transform: translateY(-50%) translateX(0);
+  opacity:1;
+  filter: drop-shadow(0 16px 40px rgba(0,0,0,.55));
+  will-change: transform, opacity;
+}
+
+.stage3-img.left{ left: var(--clash-edge-pad); }
+.stage3-img.right{ right: var(--clash-edge-pad); }
+
+/* ✅ Step 2: move to center (touch at exact screen center) */
+.stage3-img.move{
+  transition: transform var(--stage3-step-ms) linear;
+}
+.stage3-img.left.move{
+  transform: translateY(-50%) translateX(var(--moveX, 0px));
+}
+.stage3-img.right.move{
+  transform: translateY(-50%) translateX(calc(-1 * var(--moveX, 0px)));
+}
+
+/* ✅ Step 4: fade out */
+.stage3-img.fade{
+  transition: opacity var(--stage3-fade-ms) linear;
+  opacity:0;
+}
+
+
+/* ✅ Result emoji (show during step 4) */
+.stage3-result{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform: translate(-50%,-50%) scale(1);
+  font-size: clamp(72px, 12vw, 160px);
+  line-height:1;
+  z-index:19500;
+  opacity:0;
+  filter: drop-shadow(0 12px 36px rgba(0,0,0,.55));
+  transition: opacity var(--stage3-emoji-fade-ms) ease;
+}
+.stage3-result.show{ opacity:1; }
+.stage3-result.fade{
+  opacity:0;
+}
+
+
+
+
+#roundToast{
+  position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+  background:rgba(0,0,0,.78); border:1px solid rgba(255,255,255,.22);
+  padding:18px 26px; border-radius:16px; font-size:clamp(22px,3vw,34px); font-weight:900;
+  z-index:17500; display:none; text-align:center; white-space:nowrap; line-height:1.25;
+}
+#roundToast .q{ display:block }
+#roundToast .a{ display:block; margin-top:.15em; opacity:.95 }
+#roundToast .r{ display:block; margin-top:.35em; font-weight:1000 }
+#roundToast .r.ok{ color:var(--ok) }
+#roundToast .r.bad{ color:var(--bad) }
+
+#ansImg{
+  position:fixed; inset:0; width:100vw; height:100vh; object-fit:cover; object-position:center;
+  opacity:.95; filter: drop-shadow(0 20px 60px rgba(0,0,0,.50));
+  z-index:17499; display:none; pointer-events:none;
+}
+
+/* ===== กล้อง/แคนวาส AR ===== */
+#cameraMirror{ position:fixed; inset:0; width:100vw; height:100vh; object-fit:cover; transform: scaleX(-1); z-index:1; display:none; background:#000 }
+#camCanvas{ position:fixed; inset:0; width:100vw; height:100vh; z-index:2; pointer-events:none; display:none }
+#game{ z-index:3; position:relative }
+
+/* ปุ่ม Mute / Fullscreen */
+#muteBtn, #fsBtn{
+  position: fixed;
+  right: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.45);
+  border: 1px solid rgba(255,255,255,.3);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 50000;
+}
+#muteBtn{ bottom:12px }
+#fsBtn{ bottom:62px }
+
+/* มุมภาพประดับ */
+body::after{ content:""; position:fixed; top:0; left:0; width:var(--corner-img-w, 220px); height:var(--corner-img-h, 220px); background:url("image/button1.png") no-repeat left top / contain; pointer-events:none; z-index:10000 }
+body::before{ content:""; position:fixed; top:0; right:0; width:var(--corner2-img-w, 200px); height:var(--corner2-img-h, 200px); background:url("image/button2.png") no-repeat right top / contain; pointer-events:none; z-index:10000 }
+
+/* ===== อีโมจิขนมลอยไปมุม ===== */
+.fly-emoji{
+  position:fixed;
+  left:50vw;
+  top:50vh;
+  font-size:clamp(48px, 8vw, 96px);
+  line-height:1;
+  pointer-events:none;
+  z-index:20000;
+  opacity:0;
+  transform:translate(0,0) scale(.9);
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,.35));
+}
+.fly-emoji.go{
+  animation: emojiFly var(--emoji-ms, 1200ms) cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes emojiFly{
+  0%   { opacity:0; transform:translate(0,0) scale(.9); }
+  10%  { opacity:1; }
+  100% { opacity:0; transform:translate(var(--dx, 0), var(--dy, -300px)) scale(1.1); }
+}
+
+/* ===== เอฟเฟกต์จางหายเรียบ ๆ ===== */
+.option.circle.fade-out { animation: fadeOut var(--fade-ms, 600ms) ease forwards; }
+@keyframes fadeOut { 0%{opacity:1; transform:scale(1)} 100%{opacity:0; transform:scale(.9)} }
+/* ✅ [เพิ่ม] ให้ tap-target เฟดออกแบบเดียวกับวงกลมคำตอบ */
+.tap-target.fade-out{
+  animation: fadeOut var(--fade-ms, 600ms) ease forwards !important;
+  /* ปิดแอนิเมชันเดิม (wiggle/glow) ด้วยการ override animation ด้านบน */
+  pointer-events: none;
+}
+
+
+#timebarWrap{ display:none !important }
+
+/* ===== Tap target สำหรับอีโมจิเก็บ (แบบเดิม) ===== */
+.tap-target{
+  position:absolute;
+  font-size: clamp(30px, 12dvw, 180px);
+  line-height: 1;
+  user-select:none;
+  cursor:pointer;
+  z-index: 20050;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,.35));
+  transition: transform 120ms ease;
+  animation:
+    emojiFadeIn 520ms ease-out both,
+    glowPulse 1.8s ease-in-out infinite 120ms,
+    wiggle 1.4s ease-in-out infinite 120ms;
+  will-change: opacity;
+  text-shadow:
+    0 0 10px rgba(255,255,255,.70),
+    0 0 22px rgba(255,210,120,.55),
+    0 0 36px rgba(255,140,0,.40);
+}
+.tap-target:active{ transform: scale(.92); }
+.tap-target.disappear { animation: emojiFadeOut 400ms ease-in-out forwards !important; }
+
+@keyframes emojiFadeIn { 0%{opacity:0} 45%{opacity:0} 100%{opacity:1} }
+@keyframes emojiFadeOut{ 0%{opacity:1} 100%{opacity:0} }
+
+/* wiggle */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-6deg); }
+  30% { transform: rotate(6deg); }
+  45% { transform: rotate(-4deg); }
+  60% { transform: rotate(4deg); }
+  75% { transform: rotate(-2deg); }
+  90% { transform: rotate(2deg); }
+}
+
+/* ตำแหน่งอิสระของข้อความ/รูป */
+:root{
+  --qTop: 8vh;
+  --qLeft: 50%;
+}
+
+@media (max-width:420px){
+  .option.circle { --c-sz: clamp(110px, 28vw, 180px); }
+}
+
+.option.circle { overflow: visible; contain: layout paint; }
+
+.fx{
+  --fxX: 0;
+  --fxY: 0;
+  --fxS: 1;
+  will-change: transform, opacity;
+  transition: transform 520ms cubic-bezier(.2,.9,.2,1), opacity 520ms;
+}
+.in-pre { opacity:0; --fxY: -40px; }
+.in-go  { opacity:1; --fxY: 0;     }
+.out-left  { opacity:0; --fxX: -90px; }
+.out-right { opacity:0; --fxX:  90px; }
+
+.option.circle.choiceA {
+  background: rgba(0,0,0,.55);
+  border: 10px solid #a855f7;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+.option.circle.choiceB {
+  background: rgba(0,0,0,.55);
+  border: 10px solid #d97706;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+}
+
+.hud { position: initial !important; inset: auto !important; }
+.hud .left,
+.hud .right {
+  position: fixed !important;
+  top: var(--hud-top) !important;
+  z-index: 40000 !important;
+  pointer-events: none;
+}
+.hud .left { left: 20px !important; }
+.hud .right { right: 20px !important; }
+.hud .btn-mini { pointer-events: auto; }
+/* ✅ [เพิ่ม] จัดหัวใจ + คะแนนให้อยู่บรรทัดเดียวกัน */
+.hud-rightRow{
+  display:flex;
+  align-items:center;        /* ให้อยู่ระดับเดียวกัน */
+  justify-content:flex-end;  /* ชิดขวาเหมือนเดิม */
+  gap:10px;
+}
+
+.scoreBox{
+  display:flex;
+  flex-direction:column;     /* คะแนนอยู่บนตัวเลข */
+  align-items:center;
+}
+
+
+/* ===== Result Panel ===== */
+.result-panel{
+  --panel-bg: rgba(20,20,20,.92);
+  --panel-br: 20px;
+  --panel-bd: 1px solid rgba(255,255,255,.12);
+  --shadow: 0 20px 60px rgba(0,0,0,.55);
+  background: var(--panel-bg);
+  border: var(--panel-bd);
+  padding: clamp(20px, 4vw, 32px);
+  border-radius: var(--panel-br);
+  width: min(92vw, 640px);
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  gap: clamp(12px, 2vw, 18px);
+  text-align: center;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+.result-title{
+  margin: 0;
+  font-weight: 1000;
+  font-size: clamp(28px, 4.5vw, 44px);
+  letter-spacing: .2px;
+  text-shadow: 0 4px 14px rgba(0,0,0,.35);
+}
+.badge{
+  font-size: clamp(56px, 10vw, 120px);
+  line-height: 1;
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.45));
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+.result-metrics{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(10px, 2vw, 16px);
+  margin-top: 4px;
+}
+.metric{
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: clamp(10px, 2vw, 16px);
+  box-shadow: 0 8px 26px rgba(0,0,0,.25) inset, 0 8px 24px rgba(0,0,0,.25);
+}
+.metric .label{ font-size: clamp(14px, 2.2vw, 18px); opacity: .9; margin-bottom: 4px; }
+.metric .value{ font-size: clamp(28px, 5.5vw, 52px); font-weight: 1000; line-height: 1; letter-spacing: .3px; }
+.result-actions{ display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:6px; }
+.btn{
+  appearance:none; border:none; border-radius:14px;
+  padding: clamp(10px, 2.2vw, 14px) clamp(16px, 3.5vw, 24px);
+  font-weight:900; font-size: clamp(16px, 2.8vw, 20px);
+  cursor:pointer; box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  transition: transform .08s ease, filter .15s ease, box-shadow .15s ease;
+}
+.btn:active{ transform: translateY(1px) scale(.99); }
+.btn.strong{ color:#fff; background: linear-gradient(180deg, #3b82f6, #1d4ed8); border: 1px solid rgba(255,255,255,.15); }
+.btn.strong:hover{ filter: brightness(1.08); }
+.btn.ghost{ color:#fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); }
+.btn.ghost:hover{ filter: brightness(1.1); }
+
+/* ===== [เพิ่มใหม่] แถบหัวใจ (มุมขวาบน ก่อนคะแนน) ===== */
+#heartsWrap{
+  display:flex;
+  gap:4px;
+  align-items:center;
+  pointer-events:none;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.35));
+}
+
+#heartsWrap .h{
+  font-size: clamp(20px, 2dvw, 999px);
+  line-height: 1;
+}
+@media (max-width:480px){
+  #heartsWrap .h{ font-size: clamp(10px, 2dvw, 999px) }
+}
+
+/* ===== English Adventure: เรียงประโยค 3 ส่วน ===== */
+.option.sentence-choice{
+  position:absolute;
+
+  width:auto;
+  min-width: clamp(60px, 18dvw, 360px);
+  max-width: 23vw;
+  min-height: clamp(80px, 16vh, 190px);
+
+  border-radius: 28px;
+  border: none;
+
+  background: var(--choice-bg, #2563eb);
+  box-shadow: 0 8px 28px rgba(0,0,0,.35);
+
+  display:grid;
+  place-items:center;
+
+  padding: 16px 30px;
+
+  cursor:pointer;
+  user-select:none;
+  z-index:12;
+
+  white-space: normal;
+  word-break: break-word;
+  overflow:hidden;
+}
+
+.option.sentence-choice .label{
+  font-size: clamp(28px, 4dvw, 999px);
+  font-weight: 900;
+  line-height: 1.15;
+  color:#fff;
+  text-align:center;
+  text-shadow:0 3px 10px rgba(0,0,0,.6);
+  white-space: nowrap;
+  overflow: visible;
+}
+
+.option.sentence-choice.picked{
+  pointer-events: none;
+  animation: sentencePickedFadeOut 260ms ease forwards;
+}
+
+@keyframes sentencePickedFadeOut{
+  0%{
+    opacity:1;
+    transform: translateY(0) scale(1);
+  }
+  100%{
+    opacity:0;
+    transform: translateY(-10px) scale(.94);
+  }
+}
+
+.option.sentence-choice.fade-out{
+  animation: fadeOut var(--fade-ms, 600ms) ease forwards;
+}
+
+.option.circle.sentence-choice.picked{
+  pointer-events: none;
+}
+
+.option.sentence-choice{
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+}
+
+.option.sentence-choice.pre-layout{
+  opacity:0 !important;
+  transform: translateY(14px) scale(.96);
+  pointer-events:none;
+}
+
+.option.sentence-choice.ready{
+  opacity:1;
+  transform: translateY(0) scale(1);
+  pointer-events:auto;
+}
+
+/* ===== Hero Select ก่อนเริ่มเกม ===== */
+#heroChooser{
+  display:flex;
+  gap:clamp(12px, 2dvw, 28px);
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+
+.heroPick{
+  width:clamp(110px, 14dvw, 220px);
+  aspect-ratio:1/1;
+  border:none;
+  border-radius:24px;
+  background:rgba(255,255,255,.08);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  cursor:pointer;
+  padding:0;
+  overflow:hidden;
+  transition:transform .15s ease, filter .15s ease;
+}
+
+.heroPick:hover{
+  transform:scale(1.06);
+  filter:brightness(1.12);
+}
+
+.heroPick img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+  transform:scale(1.28);
+  transform-origin:center center;
+  filter:drop-shadow(0 10px 22px rgba(0,0,0,.45));
+}
+
+.stage3-img.lose-left{
+  animation: clashLoseLeft 700ms ease-in forwards;
+}
+
+.stage3-img.lose-right{
+  animation: clashLoseRight 700ms ease-in forwards;
+}
+
+@keyframes clashLoseLeft{
+  0%{
+    opacity:1;
+    transform: translateY(-50%) translateX(var(--moveX, 0px)) rotate(0deg) scale(1);
+  }
+  100%{
+    opacity:0;
+    transform: translateY(-50%) translateX(calc(var(--moveX, 0px) - 45vw)) rotate(-720deg) scale(.25);
+  }
+}
+
+@keyframes clashLoseRight{
+  0%{
+    opacity:1;
+    transform: translateY(-50%) translateX(calc(-1 * var(--moveX, 0px))) rotate(0deg) scale(1);
+  }
+  100%{
+    opacity:0;
+    transform: translateY(-50%) translateX(calc((-1 * var(--moveX, 0px)) + 45vw)) rotate(720deg) scale(.25);
+  }
+}
+
+#startTitle{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
+
+#startTitle .missionText{
+  font-size:clamp(26px,5vw,48px);
+  font-weight:900;
+}
+
+#startTitle .subText{
+  font-size:clamp(18px,3vw,28px);
+  font-weight:700;
+  opacity:.85;
+}
+
+#heroSelectScreen{
+  position:fixed;
+  inset:0;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:#000;
+  z-index:31000;
+  text-align:center;
+  padding:24px;
+}
+
+#heroSelectTitle{
+  font-size:clamp(30px,5vw,56px);
+  font-weight:1000;
+  margin-bottom:18px;
+  text-shadow:0 4px 14px rgba(0,0,0,.65);
+}
+
+#startScreen #startTitle{
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:10px !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  color:#fff !important;
+  z-index:2 !important;
+  margin-bottom:24px !important;
+}
+
+#startScreen .missionTitle{
+  display:block !important;
+  font-size:clamp(36px, 6dvw, 72px) !important;
+  font-weight:1000 !important;
+  color:#fff !important;
+}
+
+#startScreen .missionLine{
+  display:block !important;
+  font-size:clamp(24px, 3.6dvw, 40px) !important;
+  font-weight:800 !important;
+  color:#fff !important;
+  text-align:left !important;
+
+  width:auto !important;
+  max-width:none !important;
+
+  white-space:nowrap !important;
+}
+
+/* ===== Level Preload Screen ===== */
+#levelPreloadScreen{
+  position:fixed;
+  inset:0;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  background:#000;
+  z-index:30999; /* ต่ำกว่า heroSelectScreen 31000 แต่สูงกว่า landing */
+  text-align:center;
+  padding:24px;
+}
+
+#levelPreloadTitle{
+  font-size:clamp(22px, 4vw, 38px);
+  font-weight:1000;
+  color:#fff;
+  text-shadow:0 4px 14px rgba(0,0,0,.75);
+}
+
+#levelPreloadBarWrap{
+  width:min(58vw, 460px);
+  height:14px;
+  border-radius:999px;
+  background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.25);
+  overflow:hidden;
+  box-shadow:inset 0 3px 8px rgba(0,0,0,.35);
+}
+
+#levelPreloadBar{
+  width:0%;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg, #22c55e, #facc15);
+  transition:width 180ms ease;
+}
+
+#levelPreloadPercent{
+  font-size:clamp(18px, 3vw, 30px);
+  font-weight:1000;
+  color:#fff;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ==== Game Background Layer (สุ่มพื้นหลังเมื่อเข้าด่าน) ==== -->
+<div id="gameBgLayer"></div>
+
+<!-- ==== AR Mirror ==== -->
+<video id="cameraMirror" playsinline muted></video>
+<canvas id="camCanvas"></canvas>
+
+<div id="game" aria-label="สนามเกม">
+  <div id="questionBox" aria-live="polite"></div>
+  <img id="qImg" alt="ภาพประกอบคำถาม" />
+</div>
+
+<!-- ===== Welcome (หน้าสุด) ===== -->
+<div id="welcome" role="dialog" aria-modal="true">
+  <div class="welcome-content">
+    <div class="brand"><img src="image/banner2.png" alt="Banner"></div>
+    <button id="enterBtn">เข้าสู่เกม</button>
+  </div>
+</div>
+
+<!-- ===== Landing ===== -->
+<div id="landing" role="dialog" aria-modal="true" class="hide">
+
+  <div class="landing-inner">
+
+    <div class="brand">
+      <img src="image/banner2.png" alt="Banner">
+    </div>
+
+    <div class="level-menu">
+<button class="levelBtn" data-level="1">Past Simple - ประโยคบอกเล่า 1</button>
+<button class="levelBtn" data-level="2">Past Simple - ประโยคบอกเล่า 2</button>
+<button class="levelBtn" data-level="3">Past Simple - ประโยคคำถาม</button>
+    <button class="levelBtn" id="guideBtn">วิธีเล่น 📖</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== โหลดไฟล์ก่อนเลือกตัวละคร ===== -->
+<div id="levelPreloadScreen" role="dialog" aria-modal="true">
+  <div id="levelPreloadTitle">กำลังเตรียมด่าน</div>
+  <div id="levelPreloadBarWrap">
+    <div id="levelPreloadBar"></div>
+  </div>
+  <div id="levelPreloadPercent">0%</div>
+</div>
+
+<!-- ===== เลือกตัวละคร ===== -->
+<div id="heroSelectScreen">
+  <div id="heroSelectTitle">เลือกตัวละคร</div>
+
+  <div id="heroChooser">
+    <button class="heroPick" data-hero="1"><img src="image/hero1.webp" alt="hero1"></button>
+    <button class="heroPick" data-hero="2"><img src="image/hero2.webp" alt="hero2"></button>
+    <button class="heroPick" data-hero="3"><img src="image/hero3.webp" alt="hero3"></button>
+    <button class="heroPick" data-hero="4"><img src="image/hero4.webp" alt="hero4"></button>
+    <button class="heroPick" data-hero="5"><img src="image/hero5.webp" alt="hero5"></button>
+    <button class="heroPick" data-hero="6"><img src="image/hero6.webp" alt="hero6"></button>
+  </div>
+</div>
+
+<!-- ===== ภารกิจ / หน้าเริ่ม ===== -->
+<div id="startScreen">
+<div id="startTitle">
+  <div class="missionTitle">ภารกิจ</div>
+  <div class="missionLine">1. เลือกอาวุธสำหรับการต่อสู้ 2 อย่าง</div>
+  <div class="missionLine">2. เรียงประโยคภาษาอังกฤษให้ถูกต้อง</div>
+</div>
+
+  <button id="startBtn">เริ่มเกม</button>
+  <div id="countdown">3</div>
+</div>
+
+<!-- ===== คู่มือ ===== -->
+<div id="guideScreen" style="display:none; position:fixed; inset:0; align-items:center; justify-content:center; background:url('image/background2.png') center/cover no-repeat; z-index:20001">
+  <div class="guide-wrap" style="width:min(95vw, 1200px); max-height:92vh; display:flex; flex-direction:column; gap:10px; align-items:center; justify-content:center">
+    <img src="image/guide.png" alt="คู่มือเกม" style="width:100%; height:auto; max-height:92vh; border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.55); display:block">
+    <button id="guideBack" class="btn-mini">เมนูหลัก</button>
+  </div>
+</div>
+
+<!-- ===== HUD ===== -->
+<div class="hud">
+  <div class="left">
+    <div class="stack">
+      <div style="display:flex; gap:8px;">
+        <button id="quickRestart" class="btn-mini">หน้าหลัก</button>
+        <button id="pauseBtn" class="btn-mini">⏸ หยุด</button>
+        <button id="camBtn" class="btn-mini">📷: ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="stack" style="align-items:flex-end">
+      <div class="hud-rightRow">
+        <!-- หัวใจ (ซ้ายของคะแนน) -->
+        <div id="heartsWrap" aria-label="หัวใจ"></div>
+
+        <!-- กล่องคะแนน (คำว่า คะแนน อยู่บนตัวเลข) -->
+        <div class="scoreBox">
+          <div class="score-label">คะแนน</div>
+          <div id="goldWrap" class="pill gold" aria-live="polite" title="คะแนน"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== แถบเวลา ===== -->
+<div id="timebarWrap"><div id="timebar"></div></div>
+<div id="flash"></div>
+<div id="roundToast"></div>
+<img id="ansImg" src="" alt="answer background">
+
+<!-- ===== ป๊อปอัปจบด่าน ===== -->
+<div id="overlay" style="visibility:hidden; opacity:0; transition:.25s; position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,.55); z-index:9999">
+  <div class="result-panel">
+    <div class="badge" id="scoreBadge" aria-hidden="true">🏆</div>
+    <h1 class="result-title" id="endTitle">หมดเวลา</h1>
+
+    <div class="result-metrics">
+      <div class="metric">
+        <div class="label">คะแนน</div>
+        <div class="value"><b id="finalScore">0</b></div>
+      </div>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn strong" id="restartBtn">เริ่มใหม่</button>
+      <button class="btn ghost" id="selectLevelBtn">กลับสู่หน้าหลัก</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== เสียง ===== -->
+<audio id="hitSound" preload="auto" src="image/audio1.mp3"></audio>
+<audio id="winSound" preload="auto" src="image/win2.mp3"></audio>
+<audio id="bgm" preload="auto" loop src="image/bgm3.mp3"></audio>
+<audio id="selectSound" preload="auto" src="image/select.mp3"></audio>
+<audio id="eatSound" preload="auto" src="image/eat.mp3"></audio>
+<audio id="voiceAudio" preload="auto"></audio>
+<audio id="wrongSound" preload="auto" src="image/wrong.mp3"></audio>
+<audio id="fightSound" preload="auto" src="image/fight.mp3"></audio>
+
+<!-- ===== ปุ่ม Mute / Fullscreen ===== -->
+<button id="muteBtn" aria-pressed="false" title="Mute / Unmute">🔊</button>
+<button id="fsBtn" aria-pressed="false" title="เข้าสู่โหมดเต็มจอ">⛶</button>
+
+<!-- ===== ควบคุม Mute (BGM เท่านั้น) ===== -->
+<script>
+(function(){
+  const muteBtn = document.getElementById('muteBtn');
+  const bgm     = document.getElementById('bgm');
+  if(!muteBtn || !bgm) return;
+
+  let bgmMuted = false;
+
+  function applyBgmMute(m){
+    bgmMuted = !!m;
+    bgm.muted = bgmMuted;
+    muteBtn.setAttribute('aria-pressed', String(bgmMuted));
+    muteBtn.textContent = bgmMuted ? '🔇' : '🔊';
+  }
+
+  muteBtn.addEventListener('click', () => applyBgmMute(!bgmMuted));
+})();
+</script>
+
+<!-- ===== ควบคุม Fullscreen ===== -->
+<script>
+(function(){
+  const fsBtn = document.getElementById('fsBtn');
+  if (!fsBtn) return;
+  function fsEnabled(){ return document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled }
+  function isFull(){ return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement }
+  function requestFS(){ const el=document.documentElement; (el.requestFullscreen||el.webkitRequestFullscreen||el.msRequestFullscreen)?.call(el) }
+  function exitFS(){ (document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen)?.call(document) }
+  function render(){ const on=!!isFull(); fsBtn.setAttribute('aria-pressed', String(on)); fsBtn.title = on ? 'ออกจากโหมดเต็มจอ' : 'เข้าสู่โหมดเต็มจอ'; fsBtn.textContent = on ? '🗗' : '⛶' }
+  if (!fsEnabled()){ fsBtn.style.display='none'; return }
+  fsBtn.addEventListener('click', () => { if(isFull()) exitFS(); else requestFS() });
+  document.addEventListener('fullscreenchange', render);
+  document.addEventListener('webkitfullscreenchange', render);
+  document.addEventListener('msfullscreenchange', render);
+  render();
+})();
+</script>
+
+<!-- ===== ระบบเกม ===== -->
+<script>
+(()=>{
+
+/* ===== Auto Responsive Scale ===== */
+
+function updateWelcomeScale(){
+  const wrap = document.querySelector('#welcome .welcome-inner');
+  if(!wrap) return;
+
+  wrap.style.setProperty('--welcome-scale', 1);
+
+  const rect = wrap.getBoundingClientRect();
+  const maxH = window.innerHeight * 0.95;
+
+  if(rect.height > maxH){
+    const scale = maxH / rect.height;
+    wrap.style.setProperty('--welcome-scale', scale);
+  }
+}
+
+function updateLandingScale(){
+  const wrap = document.querySelector('#landing .landing-inner');
+  if(!wrap) return;
+
+  wrap.style.setProperty('--landing-scale', 1);
+
+  const rect = wrap.getBoundingClientRect();
+  const maxH = window.innerHeight * 0.95;
+
+  if(rect.height > maxH){
+    const scale = maxH / rect.height;
+    wrap.style.setProperty('--landing-scale', scale);
+  }
+}
+
+window.addEventListener('load', updateLandingScale);
+window.addEventListener('orientationchange', updateLandingScale);
+
+if ('ResizeObserver' in window){
+  const landingInner = document.querySelector('#landing .landing-inner');
+  if (landingInner){
+    const landingRO = new ResizeObserver(()=>{
+      requestAnimationFrame(updateLandingScale);
+    });
+    landingRO.observe(landingInner);
+  }
+} else {
+  window.addEventListener('resize', updateLandingScale);
+}
+
+setTimeout(updateLandingScale, 600);
+
+  /* ---------- DOM ---------- */
+  const game = document.getElementById('game');
+  const qBox = document.getElementById('questionBox');
+  const qImg = document.getElementById('qImg');
+  const timebar = document.getElementById('timebar');
+  const timebarWrap = document.getElementById('timebarWrap');
+  const flash = document.getElementById('flash');
+  const toast = document.getElementById('roundToast');
+  const overlay = document.getElementById('overlay');
+  const finalScoreEl = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+  const selectLevelBtn = document.getElementById('selectLevelBtn');
+
+  const goldWrap = document.getElementById('goldWrap');
+
+  window.currentLevel = 1;
+
+  /* ===== Clock UI for existing game timer ===== */
+  const clockEl = document.createElement('div');
+  clockEl.id = 'clock';
+  clockEl.className = 'clock-pill';
+  clockEl.textContent = '02:00';
+  document.body.appendChild(clockEl);
+
+  let clockUIItv = null;
+  let clockState = 'idle';
+
+  function fmtClock(ms){
+    const total = Math.max(0, Math.ceil(ms/1000));
+    const m = String(Math.floor(total/60)).padStart(2,'0');
+    const s = String(total % 60).padStart(2,'0');
+    return m + ':' + s;
+  }
+  function renderClockFromGame(){
+    const ms = (clockState === 'run')
+      ? Math.max(0, (gameEndAt - performance.now()))
+      : remainingMs;
+    clockEl.textContent = fmtClock(ms);
+  }
+  function startClockUI(){
+    clockState = 'run';
+    if (!clockUIItv) clockUIItv = setInterval(renderClockFromGame, 250);
+    renderClockFromGame();
+  }
+  function pauseClockUI(){
+    clockState = 'pause';
+    if (clockUIItv){ clearInterval(clockUIItv); clockUIItv = null; }
+    renderClockFromGame();
+  }
+  function resumeClockUI(){
+    clockState = 'run';
+    if (!clockUIItv) clockUIItv = setInterval(renderClockFromGame, 250);
+    renderClockFromGame();
+  }
+  function stopClockUI(){
+    clockState = 'end';
+    if (clockUIItv){ clearInterval(clockUIItv); clockUIItv = null; }
+    renderClockFromGame();
+  }
+  function resetClockUI(){
+    clockState = 'idle';
+    if (clockUIItv){ clearInterval(clockUIItv); clockUIItv = null; }
+    clockEl.textContent = fmtClock(GAME_DURATION_MS);
+  }
+
+  // Welcome -> Landing
+  (function(){
+    const welcome = document.getElementById('welcome');
+    const enterBtn = document.getElementById('enterBtn');
+    const landing = document.getElementById('landing');
+
+    enterBtn.addEventListener('click', ()=>{
+      welcome.classList.add('hide');
+      landing.classList.remove('hide');
+      bgm?.play?.().catch(()=>{});
+    });
+  })();
+
+  function renderGold(score){
+    const n = Number(score) || 0;
+    goldWrap.innerHTML = `<span class="num">${n}</span>`;
+    goldWrap.setAttribute('aria-label', `คะแนน ${n}`);
+  }
+  if (window.innerWidth < 480) {
+    goldWrap.style.setProperty('--score-size', '28px');
+  }
+
+  // เสียง
+  const hitSound = document.getElementById('hitSound');
+  const winSound = document.getElementById('winSound');
+  const bgm = document.getElementById('bgm');
+  const selectSound = document.getElementById('selectSound');
+  const eatSound = document.getElementById('eatSound');
+  const voiceAudio = document.getElementById('voiceAudio');
+  const wrongSound = document.getElementById('wrongSound');
+    const fightSound = document.getElementById('fightSound');
+
+  if (bgm) {
+    bgm.loop = true;
+  }
+
+  const VOL_BGM=0.15, VOL_SELECT=0.65, VOL_HIT=0.65, VOL_WIN=0.85, VOL_EAT=0.85, VOL_VOICE=1;
+  const VOL_WRONG=0.75;
+
+  function applyBackendVolume(){
+    if (bgm) bgm.volume = VOL_BGM;
+    if (selectSound) selectSound.volume = VOL_SELECT;
+    if (hitSound) hitSound.volume = VOL_HIT;
+    if (winSound) winSound.volume = VOL_WIN;
+    if (eatSound) eatSound.volume = VOL_EAT;
+    if (voiceAudio) voiceAudio.volume = VOL_VOICE;
+    if (wrongSound) wrongSound.volume = VOL_WRONG;
+  }
+  applyBackendVolume();
+
+// ===== Web Audio Pool (แก้เสียงหน่วง) =====
+const _audioCtx = (() => {
+  try { return new (window.AudioContext || window.webkitAudioContext)(); }
+  catch(e) { return null; }
+})();
+
+const _audioBufferCache = new Map(); // url → AudioBuffer
+
+async function _decodeAudioUrl(url) {
+  if (!_audioCtx) return null;
+  if (_audioBufferCache.has(url)) return _audioBufferCache.get(url);
+  try {
+    const res = await fetch(url);
+    const arr = await res.arrayBuffer();
+    const buf = await _audioCtx.decodeAudioData(arr);
+    _audioBufferCache.set(url, buf);
+    return buf;
+  } catch(e) {
+    return null;
+  }
+}
+
+function _playBuffer(buf, vol = 1) {
+  if (!_audioCtx || !buf) return;
+  try {
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+    const src = _audioCtx.createBufferSource();
+    const gain = _audioCtx.createGain();
+    src.buffer = buf;
+    gain.gain.value = Math.max(0, Math.min(1, vol));
+    src.connect(gain);
+    gain.connect(_audioCtx.destination);
+    src.start(0);
+  } catch(e) {}
+}
+
+// map จาก <audio> element → url (ใช้คู่กับ playSfx เดิม)
+function _getAudioSrc(el) {
+  return el?.src || el?.currentSrc || el?.getAttribute?.('src') || null;
+}
+// ===== End Audio Pool =====
+
+function playSfx(el, vol) {
+  if (!el) return;
+  const url = _getAudioSrc(el);
+  const volume = (typeof vol === 'number')
+    ? Math.max(0, Math.min(1, vol))
+    : (el.volume ?? 1);
+
+  // ถ้า buffer พร้อมแล้ว เล่นทันทีจาก Web Audio
+  if (_audioCtx && url && _audioBufferCache.has(url)) {
+    _playBuffer(_audioBufferCache.get(url), volume);
+    return;
+  }
+
+  // fallback: cloneNode เดิม (กรณี AudioContext ไม่รองรับ)
+  try {
+    const n = el.cloneNode(true);
+    n.volume = volume;
+    n.muted = false;
+    n.play?.();
+  } catch(_) {}
+}
+
+function playRandomResultSound(ok) {
+  const n = Math.floor(Math.random() * 8) + 1;
+  const src = ok ? `image/vic${n}.mp3` : `image/lose${n}.mp3`;
+
+  if (_audioCtx && _audioBufferCache.has(src)) {
+    _playBuffer(_audioBufferCache.get(src), 0.85);
+    return;
+  }
+
+  // fallback
+  const cached = __preloadAudioCache.get(src);
+  const a = cached ? cached.cloneNode(true) : new Audio(src);
+  a.volume = 0.85;
+  a.muted = false;
+  a.play().catch(() => {});
+}
+
+function playSentenceTalkSound(q) {
+  if (!q) return;
+  if (q.level !== 1 && q.level !== 2 && q.level !== 3) return;
+
+  const src = `sound${q.level}/talk${q.soundIndex}.mp3`;
+
+  if (_audioCtx && _audioBufferCache.has(src)) {
+    _playBuffer(_audioBufferCache.get(src), 1);
+    return;
+  }
+
+  // fallback
+  const cached = __preloadAudioCache.get(src);
+  const a = cached ? cached.cloneNode(true) : new Audio(src);
+  a.volume = 1;
+  a.play().catch(() => {});
+}
+
+  // util
+  const rand=(min,max)=>Math.floor(Math.random()*(max-min+1))+min;
+  const shuffle=(arr)=>{ const A=arr.slice(); for(let i=A.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [A[i],A[j]]=[A[j],A[i]] } return A };
+  const RING_COLORS = [
+    '#ef4444', '#f97316', '#f59e0b', '#eab308',
+    '#22c55e', '#10b981', '#06b6d4', '#3b82f6',
+    '#6366f1', '#8b5cf6', '#a855f7', '#ec4899'
+  ];
+  const pickRingColor = (avoid) => {
+    for (let i = 0; i < 20; i++){
+      const c = RING_COLORS[(Math.random() * RING_COLORS.length) | 0];
+      if (!avoid || c !== avoid) return c;
+    }
+    return RING_COLORS[0];
+  };
+
+/* ==========================================================
+   English Adventure: sentence ordering
+   1 ประโยค แบ่งเป็น 3 ตัวเลือก
+   ใช้ข้อมูลด่าน 1 ซ้ำทั้ง 3 ด่านก่อน
+   ========================================================== */
+const SENTENCE_LEVEL1_BANK  = [
+  { parts: ['I', 'walked', 'to school'], 	wrong: ['walking', 'walk'] },
+  { parts: ['She', 'cleaned', 'her room'], 	wrong: ['cleaning', 'clean'] },
+  { parts: ['He', 'played', 'football'], 	wrong: ['playing', 'play'] },
+  { parts: ['We', 'watched', 'a movie'], 	wrong: ['watching', 'watch'] },
+  { parts: ['My mother', 'cooked', 'rice'], 	wrong: ['cooking', 'cook'] },
+  { parts: ['I', 'washed', 'my hands'], 	wrong: ['washing', 'wash'] },
+  { parts: ['He', 'brushed', 'his teeth'], 	wrong: ['brushing', 'brush'] },
+  { parts: ['She', 'watered', 'the flowers'], 	wrong: ['watering', 'water'] },
+  { parts: ['We', 'painted', 'pictures'], 	wrong: ['painting', 'paint'] },
+  { parts: ['I', 'helped', 'my father'], 	wrong: ['helping', 'help'] },
+  { parts: ['He', 'kicked', 'the ball'], 	wrong: ['kicking', 'kick'] },
+  { parts: ['She', 'listened', 'to music'], 	wrong: ['listening', 'listen'] },
+  { parts: ['They', 'clapped', 'their hands'],	wrong: ['clapping', 'clap'] },
+  { parts: ['I', 'packed', 'my bag'],		 wrong: ['packing', 'pack'] },
+  { parts: ['He', 'opened', 'the window'], 	wrong: ['opening', 'open'] },
+  { parts: ['She', 'smiled', 'at me'], 		wrong: ['smiling', 'smile'] },
+  { parts: ['We', 'planted', 'trees'], 		wrong: ['planting', 'plant'] },
+  { parts: ['They', 'danced', 'at the party'],  wrong: ['dancing', 'dance'] },
+  { parts: ['I', 'finished', 'my homework'], 	wrong: ['finishing', 'finish'] },
+  { parts: ['He', 'borrowed', 'a book'], 	wrong: ['borrowing', 'borrow'] },
+  { parts: ['We', 'learned', 'a new song'], 	wrong: ['learning', 'learn'] },
+  { parts: ['They', 'collected', 'leaves'], 	wrong: ['collecting', 'collect'] },
+  { parts: ['I', 'mixed', 'the color'],   	wrong: ['mixing', 'mix'] },
+  { parts: ['He', 'counted', 'the stars'], 	wrong: ['counting', 'count'] },
+  { parts: ['She', 'folded', 'the paper'], 	wrong: ['folding', 'fold'] },
+  { parts: ['We', 'recycled', 'old bottles'], 	wrong: ['recycling', 'recycle'] },
+  { parts: ['I', 'dropped', 'my pencil'], 	wrong: ['dropping', 'drop'] },
+  { parts: ['He', 'pulled', 'the door'], 	wrong: ['pulling', 'pull'] },
+  { parts: ['She', 'pushed', 'the cart'], 	wrong: ['pushing', 'push'] },
+  { parts: ['We', 'measured', 'the table'], 	wrong: ['measuring', 'measure'] },
+    { parts: ['They', 'rested', 'after class'], wrong: ['resting', 'rest'] },
+  { parts: ['I', 'carried', 'my books'], 	wrong: ['carrying', 'carry'] },
+  { parts: ['He', 'asked', 'the teacher'], 	wrong: ['asking', 'ask'] },
+  { parts: ['We', 'enjoyed', 'the class'], wrong: ['enjoying', 'enjoy'] },
+  { parts: ['They', 'arrived', 'at school'], wrong: ['arriving', 'arrive'] },
+];
+
+const SENTENCE_LEVEL2_BANK = [
+  { parts: ['I', 'went', 'to school'],           wrong: ['go', 'going'] },
+  { parts: ['She', 'ate', 'breakfast'],           wrong: ['eat', 'eating'] },
+  { parts: ['He', 'drank', 'some water'],         wrong: ['drink', 'drinking'] },
+  { parts: ['We', 'saw', 'a rainbow'],            wrong: ['see', 'seeing'] },
+  { parts: ['They', 'ran', 'to the park'],        wrong: ['run', 'running'] },
+  { parts: ['I', 'took', 'my bag'],               wrong: ['take', 'taking'] },
+  { parts: ['She', 'came', 'to class'],           wrong: ['come', 'coming'] },
+  { parts: ['We', 'sang', 'a song'],              wrong: ['sing', 'singing'] },
+  { parts: ['They', 'sat', 'on the floor'],       wrong: ['sit', 'sitting'] },
+  { parts: ['He', 'bought', 'a snack'],           wrong: ['buy', 'buying'] },
+  { parts: ['We', 'swam', 'in the pool'],         wrong: ['swim', 'swimming'] },
+  { parts: ['They', 'wrote', 'a story'],          wrong: ['write', 'writing'] },
+  { parts: ['I', 'got', 'a new pen'],             wrong: ['get', 'getting'] },
+  { parts: ['She', 'made', 'a card'],             wrong: ['make', 'making'] },
+  { parts: ['He', 'told', 'a story'],              wrong: ['tell', 'telling'] },
+  { parts: ['We', 'drew', 'a picture'],           wrong: ['draw', 'drawing'] },
+  { parts: ['She', 'won', 'the game'],            wrong: ['win', 'winning'] },
+  { parts: ['He', 'broke', 'the ruler'], 	  wrong: ['break', 'breaking'] },
+  { parts: ['We', 'met', 'a doctor'],      	  wrong: ['meet', 'meeting'] },
+  { parts: ['They', 'left', 'the room'],          wrong: ['leave', 'leaving'] },
+  { parts: ['I', 'found', 'a coin'],              wrong: ['find', 'finding'] },
+  { parts: ['He', 'rode', 'his bicycle'],         wrong: ['ride', 'riding'] },
+  { parts: ['We', 'knew', 'the answer'],          wrong: ['know', 'knowing'] },
+  { parts: ['They', 'threw', 'the ball'],         wrong: ['throw', 'throwing'] },
+  { parts: ['She', 'sent', 'a letter'],           wrong: ['send', 'sending'] },
+  { parts: ['He', 'caught', 'the bug'],           wrong: ['catch', 'catching'] },
+  { parts: ['They', 'grew', 'flowers'],           wrong: ['grow', 'growing'] },
+  { parts: ['She', 'spoke', 'to the class'],      wrong: ['speak', 'speaking'] },
+  { parts: ['He', 'slept', 'early'],              wrong: ['sleep', 'sleeping'] },
+  { parts: ['They', 'felt', 'happy'],             wrong: ['feel', 'feeling'] },
+];
+
+const SENTENCE_LEVEL3_BANK = [
+  { parts: ['Did', 'you', 'eat breakfast?'],       wrong: ['Do'] },
+  { parts: ['Did', 'he', 'go to school?'],         wrong: ['Do'] },
+  { parts: ['Did', 'she', 'do homework?'],    	 wrong: ['Does'] },
+  { parts: ['Did', 'they', 'play football?'],      wrong: ['Do'] },
+  { parts: ['Did', 'we', 'win the game?'],         wrong: ['Do'] },
+  { parts: ['Did', 'he', 'sleep?'],    			 wrong: ['Does'] },
+  { parts: ['Did', 'she', 'cry?'],     			 wrong: ['Does'] },
+  { parts: ['Did', 'they', 'watch TV?'],      	wrong: ['Do'] },
+  { parts: ['Did', 'he', 'get sick?'],		 wrong: ['Does'] },
+  { parts: ['Did', 'she', 'sing?'],        	 wrong: ['Does'] },
+  { parts: ['Did', 'they', 'swim?'],   		wrong: ['Do'] },
+  { parts: ['Did', 'she', 'write a letter?'],      wrong: ['Does'] },
+  { parts: ['Did', 'they', 'come to school?'],     wrong: ['Do'] },
+  { parts: ['Did', 'you', 'see the moon?'],     wrong: ['Do'] },
+  { parts: ['Did', 'he', 'find me?'],      	wrong: ['Does'] },
+  { parts: ['Did', 'she', 'make a card?'],         wrong: ['Does'] },
+  { parts: ['Did', 'they', 'sit down?'],   	wrong: ['Do'] },
+  { parts: ['Did', 'you', 'like it?'],      wrong: ['Do'] },
+  { parts: ['Did', 'he', 'buy a snack?'],          wrong: ['Does'] },
+  { parts: ['Did', 'you', 'read a book?'],         wrong: ['Do'] },
+  { parts: ['Did', 'he', 'catch the ball?'],       wrong: ['Does'] },
+  { parts: ['Did', 'she', 'wake up?'],       wrong: ['Does'] },
+  { parts: ['Did', 'they', 'arrive?'],     wrong: ['Do'] },
+  { parts: ['Did', 'he', 'tell a story?'],         wrong: ['Does'] },
+  { parts: ['Did', 'she', 'feed the fish?'],       wrong: ['Does'] },
+  { parts: ['Did', 'she', 'learn?'],    		wrong: ['Does'] },
+  { parts: ['Did', 'he', 'feel sick?'],            wrong: ['Does'] },
+];
+
+const SENTENCE_BANK_BY_LEVEL = {
+  1: SENTENCE_LEVEL1_BANK,
+  2: SENTENCE_LEVEL2_BANK,
+  3: SENTENCE_LEVEL3_BANK
+};
+
+let __sentenceOrder = [];
+let __sentenceIdx = 0;
+let __sentenceLevel = 0;
+
+function resetSentenceOrderIfNeeded(level){
+  const bank = SENTENCE_BANK_BY_LEVEL[level] || SENTENCE_LEVEL1_BANK;
+
+  if (__sentenceLevel !== level || !__sentenceOrder.length || __sentenceIdx >= __sentenceOrder.length){
+    __sentenceLevel = level;
+    __sentenceOrder = shuffle([...Array(bank.length).keys()]);
+    __sentenceIdx = 0;
+  }
+
+  return bank;
+}
+
+function makeSentenceWrongChoice(item){
+  const wrongList = Array.isArray(item.wrong) ? item.wrong : [];
+  const safeList = wrongList
+    .map(x => String(x).trim())
+    .filter(Boolean);
+
+  const wrongText = safeList.length
+    ? safeList[(Math.random() * safeList.length) | 0]
+    : 'wrong choice';
+
+  return {
+    text: wrongText,
+    orderIndex: -1,
+    isWrong: true
+  };
+}
+
+function makeSentenceQuestion(level){
+  const bank = resetSentenceOrderIfNeeded(level);
+  const idx = __sentenceOrder[__sentenceIdx++];
+
+  const item = bank[idx];
+  const parts = item.parts;
+
+  const correctChoices = parts.map((text, orderIndex)=>({
+    text,
+    orderIndex,
+    isWrong: false
+  }));
+
+  const wrongChoice = makeSentenceWrongChoice(item);
+
+  const choices = shuffle([
+    ...correctChoices,
+    wrongChoice
+  ]);
+
+return {
+  mode: 'sentence4',
+  question: '',
+  img: null,
+  parts,
+  choices,
+  answerText: '',
+  level,
+  soundIndex: idx + 1
+};
+}
+
+function applyResponsiveScale(){
+  const vh = innerHeight;
+
+  // 👉 ใช้ "ความสูงจอจริง" เป็นฐาน (Laptop ≈ 900)
+  const s = vh / 900;
+
+  // ===== qBox =====
+  document.documentElement.style.setProperty('--qFontMin', (24 * s) + 'px');
+  document.documentElement.style.setProperty('--qFontMax', (100 * s) + 'px');
+
+  // ===== emoji =====
+  document.documentElement.style.setProperty('--bonus-size', (162 * s) + 'px');
+
+  // ===== รูป =====
+  document.documentElement.style.setProperty('--qImgMaxW', `min(${60 * s}vw, ${720 * s}px)`);
+  document.documentElement.style.setProperty('--qImgMaxH', `min(${48 * s}vh, ${480 * s}px)`);
+}
+
+let selectedHero = 1;
+
+function setMissionByLevel(level){
+  const st = document.getElementById('startTitle');
+  if (!st) return;
+
+  const missions = {
+    1: [
+      '1. เลือกอาวุธสำหรับการต่อสู้ 2 อย่าง',
+      '2. เรียงประโยคในรูปแบบบอกเล่าให้ถูกต้อง'
+    ],
+    2: [
+      '1. เลือกอาวุธสำหรับการต่อสู้ 2 อย่าง',
+      '2. เรียงประโยคในรูปแบบคำถามให้ถูกต้อง'
+    ],
+    3: [
+      '1. เลือกอาวุธสำหรับการต่อสู้ 2 อย่าง',
+      '2. เรียงประโยค Verb to have ให้ถูกต้อง'
+    ]
+  };
+
+  const m = missions[level] || missions[1];
+
+  st.innerHTML = `
+    <div class="missionTitle">ภารกิจ</div>
+    <div class="missionLine">${m[0]}</div>
+    <div class="missionLine">${m[1]}</div>
+  `;
+}
+
+const MONSTER_POOL = [1,2,3,4,5,6].map(n => `image/monster${n}.webp`);
+
+/* ===== Level Preloader: ก่อนเข้าเลือกตัวละคร ===== */
+const __preloadImageCache = new Map();
+const __preloadAudioCache = new Map();
+const __levelPreloadReady = new Map();
+let __levelPreloadToken = 0;
+
+function updateLevelPreloadUI(done, total){
+  const screen = document.getElementById('levelPreloadScreen');
+  const bar = document.getElementById('levelPreloadBar');
+  const pct = document.getElementById('levelPreloadPercent');
+
+  const percent = total ? Math.round((done / total) * 100) : 100;
+
+  if (screen) screen.style.display = 'flex';
+  if (bar) bar.style.width = percent + '%';
+  if (pct) pct.textContent = percent + '%';
+}
+
+function hideLevelPreloadUI(){
+  const screen = document.getElementById('levelPreloadScreen');
+  if (screen) screen.style.display = 'none';
+}
+
+function warmImage(url){
+  if (!url) return Promise.resolve(null);
+
+  const cached = __preloadImageCache.get(url);
+  if (cached && cached.complete && cached.naturalWidth > 0) {
+    return Promise.resolve(cached);
+  }
+
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.decoding = 'async';
+    img.loading = 'eager';
+
+    img.onload = async ()=>{
+      try{ await img.decode(); }catch(_){}
+      __preloadImageCache.set(url, img);
+      resolve(img);
+    };
+
+    img.onerror = ()=> reject(new Error('โหลดรูปไม่ได้: ' + url));
+    img.src = url;
+  });
+}
+
+function warmAudio(url) {
+  if (!url) return Promise.resolve(null);
+
+  const cached = __preloadAudioCache.get(url);
+  if (cached) {
+    // ถ้า Web Audio พร้อม ให้ decode buffer ด้วย (ถ้ายังไม่มี)
+    if (_audioCtx && !_audioBufferCache.has(url)) {
+      _decodeAudioUrl(url).catch(() => {});
+    }
+    return Promise.resolve(cached);
+  }
+
+  return new Promise((resolve, reject) => {
+    const au = new Audio();
+    au.preload = 'auto';
+    au.src = url;
+
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      __preloadAudioCache.set(url, au);
+      // decode เป็น AudioBuffer ทันทีหลัง canplay
+      if (_audioCtx && !_audioBufferCache.has(url)) {
+        _decodeAudioUrl(url).catch(() => {});
+      }
+      resolve(au);
+    };
+    const fail = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      reject(new Error('โหลดเสียงไม่ได้: ' + url));
+    };
+    const cleanup = () => {
+      au.removeEventListener('canplaythrough', finish);
+      au.removeEventListener('canplay', finish);
+      au.removeEventListener('loadeddata', finish);
+      au.removeEventListener('error', fail);
+    };
+
+    au.addEventListener('canplaythrough', finish, { once: true });
+    au.addEventListener('canplay', finish, { once: true });
+    au.addEventListener('loadeddata', finish, { once: true });
+    au.addEventListener('error', fail, { once: true });
+
+    au.load();
+    setTimeout(finish, 3500);
+  });
+}
+
+function getLevelTalkUrls(level){
+  const bank = SENTENCE_BANK_BY_LEVEL[level] || [];
+  return bank.map((_, i)=> `sound${level}/talk${i + 1}.mp3`);
+}
+
+function collectLevelPreloadAssets(level){
+  const images = [
+    // รูปปุ่มเลือกตัวละคร
+    ...[1,2,3,4,5,6].map(n => `image/hero${n}.webp`),
+
+    // รูป hero ตอนชน
+    ...[1,2,3,4,5,6].map(n => `image/hero${n}${n}.webp`),
+
+    // รูป monster ตอนชน
+    ...MONSTER_POOL
+  ];
+
+  const audio = [
+    // เสียงระบบหลัก
+    'image/audio1.mp3',
+    'image/win2.mp3',
+    'image/bgm3.mp3',
+    'image/select.mp3',
+    'image/eat.mp3',
+    'image/wrong.mp3',
+    'image/fight.mp3',
+
+    // เสียงตอบถูก/ผิด สุ่ม 1-8
+    ...[1,2,3,4,5,6,7,8].map(n => `image/vic${n}.mp3`),
+    ...[1,2,3,4,5,6,7,8].map(n => `image/lose${n}.mp3`),
+
+    // เสียงอ่านประโยคของด่านนั้น
+    ...getLevelTalkUrls(level)
+  ];
+
+  return {
+    images: [...new Set(images)],
+    audio: [...new Set(audio)]
+  };
+}
+
+function isLevelReady(level){
+  return __levelPreloadReady.get(Number(level)) === true;
+}
+
+async function preloadLevelAssets(level, opts = {}){
+  const lv = Number(level || 1);
+  const myToken = ++__levelPreloadToken;
+
+  if (isLevelReady(lv)) {
+    if (!opts.silent) {
+      updateLevelPreloadUI(1, 1);
+      await new Promise(r => setTimeout(r, 180));
+      hideLevelPreloadUI();
+    }
+    return true;
+  }
+
+  const assets = collectLevelPreloadAssets(lv);
+
+  const jobs = [
+    ...assets.images
+      .filter(url => !__preloadImageCache.has(url))
+      .map(url => ({ type:'image', url })),
+
+    ...assets.audio
+      .filter(url => !__preloadAudioCache.has(url))
+      .map(url => ({ type:'audio', url }))
+  ];
+
+  let done = 0;
+  const total = jobs.length;
+
+  if (!opts.silent) updateLevelPreloadUI(done, total);
+
+  if (!total){
+    __levelPreloadReady.set(lv, true);
+
+    if (!opts.silent) {
+      updateLevelPreloadUI(1, 1);
+      await new Promise(r => setTimeout(r, 180));
+      hideLevelPreloadUI();
+    }
+
+    return true;
+  }
+
+  for (const job of jobs){
+    if (myToken !== __levelPreloadToken) return false;
+
+    try{
+      if (job.type === 'image') await warmImage(job.url);
+      else await warmAudio(job.url);
+    }catch(err){
+      console.warn('[PRELOAD FAIL]', job.url, err);
+    }
+
+    done++;
+    if (!opts.silent) updateLevelPreloadUI(done, total);
+  }
+
+  __levelPreloadReady.set(lv, true);
+
+  if (!opts.silent) {
+    updateLevelPreloadUI(total, total);
+    await new Promise(r => setTimeout(r, 250));
+    hideLevelPreloadUI();
+  }
+
+  return true;
+}
+
+window.preloadLevelAssets = preloadLevelAssets;
+window.isLevelReady = isLevelReady;
+
+function getSelectedHeroClashImg(){
+  return `image/hero${selectedHero}${selectedHero}.webp`;
+}
+
+  function pickFrom(arr){
+    return arr[(Math.random()*arr.length)|0];
+  }
+
+  function waitMs(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+async function playStage3Clash(ok){
+  const token = Symbol('stage3');
+  playStage3Clash._token = token;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'stage3-wrap';
+
+  const cleanupIfEnded = ()=>{
+    if (ended || playStage3Clash._token !== token){
+      wrap.remove();
+      return true;
+    }
+    return false;
+  };
+
+  const leftImg = document.createElement('img');
+  leftImg.className = 'stage3-img left';
+  leftImg.alt = 'hero';
+  leftImg.style.width = 'min(27dvw, 560px)';
+  leftImg.style.height = 'auto';
+
+  const rightImg = document.createElement('img');
+  rightImg.className = 'stage3-img right';
+  rightImg.alt = 'monster';
+  rightImg.style.width = 'min(27dvw, 560px)';
+  rightImg.style.height = 'auto';
+
+  leftImg.src  = getSelectedHeroClashImg();
+  rightImg.src = pickFrom(MONSTER_POOL);
+
+  wrap.appendChild(leftImg);
+  wrap.appendChild(rightImg);
+  document.body.appendChild(wrap);
+
+  const stepMs = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue('--stage3-step-ms')
+  ) || 700;
+
+  if (cleanupIfEnded()) return;
+  await waitMs(stepMs);
+  if (cleanupIfEnded()) return;
+
+  await waitMs(30);
+  if (cleanupIfEnded()) return;
+
+  const centerX = innerWidth / 2;
+  const L = leftImg.getBoundingClientRect();
+  const R = rightImg.getBoundingClientRect();
+
+  const moveXLeft  = Math.max(0, Math.round(centerX - (L.left + L.width)));
+  const moveXRight = Math.max(0, Math.round(R.left - centerX));
+
+  leftImg.style.setProperty('--moveX', moveXLeft + 'px');
+  rightImg.style.setProperty('--moveX', moveXRight + 'px');
+
+// รอ transitionend จริงจาก CSS แทน setTimeout
+await new Promise(resolve => {
+  let fired = false;
+
+  const onDone = () => {
+    if (fired) return;
+    fired = true;
+    leftImg.removeEventListener('transitionend', onDone);
+    rightImg.removeEventListener('transitionend', onDone);
+    clearTimeout(fallback);
+    resolve();
+  };
+
+  // fallback กัน event ไม่ยิง (เช่น element ถูกลบก่อน)
+  const fallback = setTimeout(onDone, stepMs + 200);
+
+  leftImg.addEventListener('transitionend', onDone, { once: true });
+  rightImg.addEventListener('transitionend', onDone, { once: true });
+
+  requestAnimationFrame(() => {
+    if (cleanupIfEnded()){ fired = true; clearTimeout(fallback); resolve(); return; }
+    leftImg.classList.add('move');
+    rightImg.classList.add('move');
+  });
+});
+
+if (cleanupIfEnded()) return;
+
+// เสียงออกพอดีภาพหยุด
+playSfx(fightSound, 0.8);
+
+  await waitMs(stepMs);
+  if (cleanupIfEnded()) return;
+
+  const loser  = ok ? rightImg : leftImg;
+  const winner = ok ? leftImg : rightImg;
+
+  // ✅ แพ้/ชนะ
+  loser.classList.add(ok ? 'lose-right' : 'lose-left');
+
+  // ✅ เสียงตอบถูก/ผิด
+  playRandomResultSound(ok);
+
+  qBox.style.transition = 'opacity 700ms linear';
+  qBox.style.opacity = '0';
+
+  await waitMs(750);
+  if (cleanupIfEnded()) return;
+
+  await waitMs(1000);
+  if (cleanupIfEnded()) return;
+
+  winner.style.transition = 'opacity 350ms linear';
+  winner.style.opacity = '0';
+
+  await waitMs(380);
+  if (cleanupIfEnded()) return;
+
+  wrap.remove();
+}
+
+  /* ==========================================================
+     โจทย์คณิต: บวก/ลบ/คูณ
+     ========================================================== */
+  function makeWrongNear(correct, span=6){
+    for(let t=0;t<40;t++){
+      const w = correct + rand(-span, span);
+      if (w !== correct && w >= 0) return w;
+    }
+    return correct + 1;
+  }
+
+function makeWrongNearBounded(correct, span=2, minV=0, maxV=20){
+  for(let t=0; t<80; t++){
+    const w = correct + rand(-span, span);
+    if (w !== correct && w >= minV && w <= maxV) return w;
+  }
+  // fallback
+  const fallback = Math.min(maxV, Math.max(minV, correct + 1));
+  return (fallback === correct) ? Math.max(minV, correct - 1) : fallback;
+}
+
+
+  function makeMathQuestion(level){
+  const maxAns = MAX_ANSWER_BY_LEVEL[level] ?? 20;
+  const ab = MAX_AB_BY_LEVEL[level] ?? { a: 20, b: 20 };
+  const maxA = ab.a ?? 20;
+  const maxB = ab.b ?? 20;
+
+// ===== ด่าน 1: บวก (+)
+// เงื่อนไข: a <= 20, b <= 20, และ a+b <= 20
+if (level === 1){
+  let a, b, ans;
+
+  // สุ่ม a,b เต็มเพดานก่อน แล้วคัดให้ผ่านเงื่อนไขคำตอบไม่เกิน 20
+  // (แก้ปัญหา b ถูกบีบให้เล็กเมื่อ a ใหญ่)
+  for(let t=0; t<200; t++){
+    a = rand(1, maxA);
+    b = rand(1, maxB);
+    ans = a + b;
+    if (ans <= maxAns) break;
+  }
+
+  // ✅ ช้อยส์ผิดให้ “ใกล้” คำตอบขึ้น เพื่อลดการเดาง่าย
+  const wrong = makeWrongNearBounded(ans, 2, 0, maxAns); // ±2 พอ
+  const choices = shuffle([ans, wrong]);
+return {
+  mode: 2,
+  question: `${a} + ${b}`,
+  img: null,
+  choices,
+  correctIndex: choices.indexOf(ans)
+};
+
+}
+
+
+  // ===== ด่าน 2: ลบ (−)
+  // เงื่อนไข: a <= 20, b <= 20, และ "ไม่ติดลบ" (สลับให้ a>=b)
+  if (level === 2){
+    let a = rand(1, maxA);
+    let b = rand(1, maxB);
+
+    // คุมไม่ให้ติดลบ (ยังคงเงื่อนไขเดิมที่เกมควรอ่านง่าย)
+    if (b > a){ const t=a; a=b; b=t; }
+
+    const ans = a - b; // จะอยู่ในช่วง 0..20 แน่นอน
+
+    const wrong = makeWrongNear(ans, 6);
+    const choices = shuffle([ans, wrong]);
+return {
+  mode: 2,
+  question: `${a} − ${b}`,
+  img: null,
+  choices,
+  correctIndex: choices.indexOf(ans)
+};
+
+  }
+
+  // ===== ด่าน 3: คูณ (×)
+  // เงื่อนไข: a <= 12, b <= 12, และ a*b <= 144
+  if (level === 3){
+    const a = rand(0, maxA); // 0..12
+    const b = rand(0, maxB); // 0..12
+    const ans = a * b;       // สูงสุด 144 (12*12)
+
+    const wrong = makeWrongNear(ans, 8);
+    const choices = shuffle([ans, wrong]);
+return {
+  mode: 2,
+  question: `${a} × ${b}`,
+  img: null,
+  choices,
+  correctIndex: choices.indexOf(ans)
+};
+  }
+
+  // fallback เผื่อกรณี level แปลก
+  const a = rand(0, 10), b = rand(0, 10);
+  const ans = a + b;
+  const wrong = makeWrongNear(ans, 6);
+  const choices = shuffle([ans, wrong]);
+  return { mode: 2, question: `${a} + ${b} = ?`, img: null, choices, correctIndex: choices.indexOf(ans) };
+}
+
+
+
+  /* ===== Emoji fly-to-corner (เดิม) ===== */
+  const REWARD_EMOJIS = ['🍩','🍪','🍰','🧁','🍫','🍬','🍭','🍦','🍧','🍨','🍮','🥐','🥞'];
+  function pickEmoji(){ return REWARD_EMOJIS[(Math.random() * REWARD_EMOJIS.length) | 0]; }
+
+  function getTargetDelta(direction='top-right'){
+    const margin = 24;
+    const cx = innerWidth / 2;
+    const cy = innerHeight / 2;
+    let tx = innerWidth - margin;
+    let ty = margin;
+
+    if (typeof direction === 'object' && direction && Number.isFinite(direction.x) && Number.isFinite(direction.y)){
+      tx = direction.x; ty = direction.y;
+    } else {
+      switch (direction){
+        case 'top-left':     tx = margin;            ty = margin;            break;
+        case 'bottom-right': tx = innerWidth-margin; ty = innerHeight-margin;break;
+        case 'bottom-left':  tx = margin;            ty = innerHeight-margin;break;
+        case 'top-right':
+        default:             tx = innerWidth-margin; ty = margin;            break;
+      }
+    }
+    return { dx: tx - cx, dy: ty - cy };
+  }
+
+  function launchEmojiToCorner(direction='top-right', durationMs=900){
+    const el = document.createElement('div');
+    el.className = 'fly-emoji';
+    el.textContent = pickEmoji();
+
+    const {dx, dy} = getTargetDelta(direction);
+    el.style.setProperty('--dx', dx + 'px');
+    el.style.setProperty('--dy', dy + 'px');
+    el.style.setProperty('--emoji-ms', durationMs + 'ms');
+
+    document.body.appendChild(el);
+    requestAnimationFrame(()=> el.classList.add('go'));
+    el.addEventListener('animationend', ()=> el.remove(), {once:true});
+  }
+
+  function flyScoreForEl(el, ok){
+    if (!ok) return;
+    launchEmojiToCorner('top-right', 900);
+  }
+
+  /* ===== ตัวจับเวลาเกมทั้งด่าน ===== */
+  const GAME_DURATION_MS = 120000;
+  let gameTimerId = null;
+  let gameEndAt = 0;
+  let remainingMs = GAME_DURATION_MS;
+
+  function clearGameTimer(){
+    if (gameTimerId){ clearTimeout(gameTimerId); gameTimerId = null; }
+  }
+  function scheduleGameTimer(ms){
+    clearGameTimer();
+    gameTimerId = setTimeout(()=>{
+      if(!ended){ endLevel(); }
+    }, Math.max(0, ms|0));
+  }
+  function startGameTimer(){
+    remainingMs = GAME_DURATION_MS;
+    gameEndAt = performance.now() + remainingMs;
+    scheduleGameTimer(remainingMs);
+    startClockUI();
+  }
+  function pauseGameTimer(){
+    if (gameTimerId){
+      remainingMs = Math.max(0, gameEndAt - performance.now());
+      clearGameTimer();
+      pauseClockUI();
+    }
+  }
+  function resumeGameTimer(){
+    if (remainingMs > 0 && !ended){
+      gameEndAt = performance.now() + remainingMs;
+      scheduleGameTimer(remainingMs);
+      resumeClockUI();
+    }
+  }
+
+  const Q_DROP_MS=600, Q_HOLD_MS=400, OPT_IN_MS=200;
+let running=false, ended=false, paused=false;
+window.ended = ended;
+
+function setEnded(v){
+  ended = !!v;
+  window.ended = ended;
+}
+
+let score=0, round=0;
+let roundTimer=null, timeLeft=0, awaitingAnswer=false;
+
+// ✅ English Adventure state
+let currentQuestion = null;
+let pickedSentenceParts = [];
+let pickedSentenceOrders = [];
+
+  function clearRoundObjects(){ document.querySelectorAll('.option').forEach(n=>n.remove()); }
+
+  function restorePlayfield(){
+    game.style.visibility = 'visible';
+    qBox.style.display    = 'block';
+  }
+
+  function updateHUD(){ renderGold(score); }
+
+  /* ==========================================================
+     ✅ [เพิ่มใหม่] ระบบหัวใจ 5 ดวง (ลดเฉพาะกดระเบิด)
+     ========================================================== */
+  const heartsWrap = document.getElementById('heartsWrap');
+  let hearts = 5;
+
+  function renderHearts(){
+    if(!heartsWrap) return;
+    heartsWrap.innerHTML = '';
+    for(let i=0;i<5;i++){
+      const s = document.createElement('span');
+      s.className = 'h';
+      s.textContent = (i < hearts) ? '❤️' : '🤍';
+      heartsWrap.appendChild(s);
+    }
+    heartsWrap.setAttribute('aria-label', `หัวใจเหลือ ${hearts} ดวง`);
+  }
+
+  function loseHeart(){
+    hearts = Math.max(0, hearts - 1);
+    renderHearts();
+    if (hearts <= 0){
+      endLevel('หมดหัวใจ');
+    }
+  }
+
+  /* ==========================================================
+     ✅ [เพิ่มใหม่] ระบบ "เก็บอีโมจิ 4 อัน" ก่อนเลือกคำตอบ
+        - 3 อัน = ปกติ (ต้องเก็บครบ 3 ทีละอัน)
+        - 1 อัน = 💣 (กดได้ แต่เสียหัวใจ 1 และข้ามไปเลือกคำตอบทันที)
+     ========================================================== */
+  const SAFE_EMOJIS = ['🪄','🛡️','⚔️','🗡️','🪃','🏹','🪙','🔫','🪵','🪠','🛡️','⚔️','🗡️','🏹','🛡️'];
+  const BOMB_EMOJI = '☠️';
+
+  let emojiGateActive = false;
+  let collectedSafe = 0;
+  let emojiGateDoneCb = null;
+
+  function clearGateEmojis(){
+    document.querySelectorAll('.tap-target').forEach(n=> n.remove());
+  }
+
+function placeTapTarget(el){
+  const PADDING = 18;
+  const triesMax = 160;
+
+  // ✅ ระยะห่างขั้นต่ำระหว่างอีโมจิ
+  const MIN_GAP = Math.max(36, innerWidth * 0.045);
+
+  // ✅ แบ่งจอเป็น 3 ส่วนแนวนอน แล้วห้ามเกิดส่วนกลาง
+  const thirdW = innerWidth / 3;
+  const forbiddenRect = {
+    x: thirdW,
+    y: 0,
+    w: thirdW,
+    h: innerHeight
+  };
+
+  const rectsOverlap = (ax,ay,aw,ah, bx,by,bw,bh) =>
+    (ax < bx + bw) && (ax + aw > bx) && (ay < by + bh) && (ay + ah > by);
+
+  function getExistingRects(exceptEl){
+    const nodes = [...document.querySelectorAll('.tap-target')].filter(n => n !== exceptEl);
+    return nodes.map(n=>{
+      const r = n.getBoundingClientRect();
+      return { x:r.left, y:r.top, w:r.width, h:r.height };
+    });
+  }
+
+  el.style.left = '-9999px';
+  el.style.top  = '-9999px';
+  document.body.appendChild(el);
+
+  const r = el.getBoundingClientRect();
+  const w = r.width;
+  const h = r.height;
+
+  const zones = [
+    { minX: PADDING, maxX: Math.max(PADDING, thirdW - PADDING - w) },
+    { minX: thirdW * 2 + PADDING, maxX: Math.max(thirdW * 2 + PADDING, innerWidth - PADDING - w) }
+  ];
+
+  const minY = PADDING;
+  const maxY = Math.max(PADDING, innerHeight - PADDING - h);
+
+  let x = 0, y = 0, ok = false, tries = 0;
+
+  while (tries++ < triesMax){
+    const zone = zones[(Math.random() * zones.length) | 0];
+
+    x = Math.round(zone.minX + Math.random() * Math.max(0, zone.maxX - zone.minX));
+    y = Math.round(minY + Math.random() * Math.max(0, maxY - minY));
+
+    let good = !rectsOverlap(x,y,w,h, forbiddenRect.x, forbiddenRect.y, forbiddenRect.w, forbiddenRect.h);
+
+    if (good){
+      const existing = getExistingRects(el);
+
+      for (const e of existing){
+        const ex = e.x - MIN_GAP;
+        const ey = e.y - MIN_GAP;
+        const ew = e.w + MIN_GAP * 2;
+        const eh = e.h + MIN_GAP * 2;
+
+        if (rectsOverlap(x,y,w,h, ex,ey,ew,eh)){
+          good = false;
+          break;
+        }
+      }
+    }
+
+    if (good){
+      ok = true;
+      break;
+    }
+  }
+
+  // fallback: ถ้าสุ่มไม่สำเร็จ ให้วางซ้าย/ขวาแบบไม่เข้ากลาง
+  if (!ok){
+    const zone = zones[(Math.random() * zones.length) | 0];
+    x = Math.round(zone.minX + Math.random() * Math.max(0, zone.maxX - zone.minX));
+    y = Math.round(minY + Math.random() * Math.max(0, maxY - minY));
+  }
+
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+}
+
+
+  function spawnOneGateEmoji(kind){
+    const e = document.createElement('div');
+    e.className = 'tap-target glow';
+    e.textContent = kind;
+
+    placeTapTarget(e);
+
+    e.addEventListener('click', () => {
+      if (!emojiGateActive || ended || paused) return;
+
+      playSfx(eatSound, VOL_EAT);
+      e.classList.add('disappear');
+
+setTimeout(() => {
+  if (ended) return;
+
+  e.remove();
+
+  if (kind === BOMB_EMOJI){
+    loseHeart();
+    if (ended) return;
+
+
+    emojiGateActive = false;
+    fadeOutGateEmojisThen(() => finishEmojiGate());
+    return;
+  }
+
+
+  collectedSafe++;
+  if (collectedSafe >= 2){
+
+    emojiGateActive = false;
+    fadeOutGateEmojisThen(() => finishEmojiGate());
+  } else {
+  }
+}, 260);
+
+    }, { once:true });
+  }
+
+  function startEmojiGate(onDone){
+    if (ended) return;
+    emojiGateActive = true;
+    collectedSafe = 0;
+    emojiGateDoneCb = (typeof onDone === 'function') ? onDone : null;
+
+    clearGateEmojis();
+
+    // สร้าง 3 ปกติ + 1 💣 (รวม 4)
+    const a = SAFE_EMOJIS[(Math.random()*SAFE_EMOJIS.length)|0];
+    const b = SAFE_EMOJIS[(Math.random()*SAFE_EMOJIS.length)|0];
+    const c = SAFE_EMOJIS[(Math.random()*SAFE_EMOJIS.length)|0];
+
+    spawnOneGateEmoji(a);
+    spawnOneGateEmoji(b);
+    spawnOneGateEmoji(c);
+    spawnOneGateEmoji(BOMB_EMOJI);
+  }
+
+  function fadeOutGateEmojisThen(cb){
+    const nodes = [...document.querySelectorAll('.tap-target')];
+    if (!nodes.length){ cb && cb(); return; }
+
+    // ล็อกไม่ให้กดซ้ำ
+    nodes.forEach(n=>{
+      n.style.pointerEvents = 'none';
+      n.classList.add('fade-out');
+    });
+
+    // รอเวลาเฟดตามตัวแปร --fade-ms (กันพลาดด้วย setTimeout)
+    const fadeMs = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--fade-ms')) || 600;
+    setTimeout(()=>{ cb && cb(); }, fadeMs + 40);
+  }
+
+
+  function finishEmojiGate(){
+    emojiGateActive = false;
+    clearGateEmojis();
+    const cb = emojiGateDoneCb;
+    emojiGateDoneCb = null;
+    cb && cb();
+  }
+
+  function resetState(){
+    clearCountdown();
+    running = false;
+    ended   = true;
+    window.ended = ended;
+    paused  = false;
+
+    clearRoundObjects();
+    clearGateEmojis();
+    emojiGateActive = false;
+    emojiGateDoneCb = null;
+
+    clearGameTimer();
+    if (roundTimer){ clearInterval(roundTimer); roundTimer = null; }
+    document.body.classList.remove('in-game');
+    score = 0;
+    round = 0;
+    timeLeft = 0;
+    awaitingAnswer = false;
+
+    // ✅ รีเซ็ตหัวใจ
+    hearts = 5;
+    renderHearts();
+
+    updateHUD();
+
+    qBox.textContent = '';
+    qBox.style.top = '-160px';
+    qBox.style.display = 'none';
+    if (qImg) {
+      qImg.style.display = 'none';
+      qImg.removeAttribute('src');
+    }
+
+    resetClockUI();
+    game.style.visibility = 'visible';
+  }
+
+  // ตัดระบบแถบเวลา
+  function startTimebar(){}
+  function stopTimebar(){}
+  function updateTimebar(){}
+
+  function dropQuestion(text, imgSrc){
+    qBox.textContent = String(text);
+    qBox.style.transition = '';
+    qImg.style.transition = '';
+    qBox.style.opacity = '';
+    qImg.style.opacity = '';
+    qBox.style.pointerEvents = 'auto';
+    qBox.style.top = 'var(--qTop)';
+    qBox.style.display = 'block';
+    qBox.style.visibility = 'hidden';
+
+    qBox.classList.remove('out-left','out-right','in-go','in-pre');
+    qImg.classList.remove('out-left','out-right','in-go','in-pre');
+    qImg.classList.add('fx','in-pre');
+
+    if (qImg){
+      if (imgSrc){
+        qImg.style.display = 'none';
+        const startIn = () => {
+          qImg.style.display = 'block';
+          qBox.style.visibility = 'visible';
+          requestAnimationFrame(() => { qImg.classList.add('in-go'); });
+        };
+        const textOnly = () => {
+          qImg.style.display = 'none';
+          qBox.style.visibility = 'visible';
+        };
+        qImg.onload  = startIn;
+        qImg.onerror = textOnly;
+        qImg.src = imgSrc;
+        if (qImg.complete && qImg.naturalWidth > 0) startIn();
+      } else {
+        qImg.style.display = 'none';
+        qImg.removeAttribute('src');
+        qBox.classList.remove('fx','in-pre','in-go','out-left','out-right');
+        qBox.classList.add('fx','in-pre');
+        qBox.style.visibility = 'visible';
+        requestAnimationFrame(() => { qBox.classList.add('in-go'); });
+      }
+    }
+  }
+
+const SENTENCE_CHOICE_COLORS = [
+  '#2563eb', // ฟ้า
+  '#7c3aed', // ม่วง
+  '#db2777', // ชมพูเข้ม
+  '#dc2626', // แดง
+  '#ea580c', // ส้ม
+  '#ca8a04', // เหลืองเข้ม
+  '#16a34a', // เขียว
+  '#0891b2', // cyan เข้ม
+  '#4f46e5', // indigo
+  '#be123c', // rose เข้ม
+  '#9333ea', // purple
+  '#15803d'  // green เข้ม
+];
+
+function pickSentenceChoiceColors(count=3){
+  return shuffle(SENTENCE_CHOICE_COLORS).slice(0, count);
+}
+
+function spawnSentenceChoices(q){
+  const choices = q.choices || [];
+    const roundColors = pickSentenceChoiceColors(choices.length);
+    const qRect = qBox.getBoundingClientRect();
+const clockRect = clockEl.getBoundingClientRect();
+
+const qBottom = qRect.bottom;
+const clockBottom = clockRect.bottom;
+
+// ระยะห่าง clock → question
+const gapClockToText = Math.max(10, qRect.top - clockBottom);
+
+const gapTextToChoice = Math.max(
+  8,
+  Math.min(gapClockToText * 0.55, innerHeight * 0.035)
+);
+
+// วางใต้ข้อความ
+let topY = Math.round(qBottom + gapTextToChoice);
+
+// กันไม่ให้ต่ำเกินไป
+topY = Math.max(Math.round(innerHeight * 0.18), topY);
+topY = Math.min(topY, Math.round(innerHeight * 0.42));
+
+  choices.forEach((choice, i)=>{
+    const el = document.createElement('div');
+    el.className = `option sentence-choice pre-layout choice${i + 1}`;
+        el.style.setProperty('--choice-bg', roundColors[i]);
+    el.dataset.orderIndex = String(choice.orderIndex);
+    el.dataset.text = choice.text;
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = choice.text;
+    el.appendChild(label);
+
+    game.appendChild(el);
+    el.addEventListener('click', ()=> trySentencePick(el));
+  });
+
+requestAnimationFrame(()=>{
+  layoutSentenceChoices();
+
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('.option.sentence-choice').forEach(el=>{
+      el.classList.remove('pre-layout');
+      el.classList.add('ready');
+    });
+  });
+});
+}
+
+function layoutSentenceChoices(){
+  const btns = [...document.querySelectorAll('.option.sentence-choice')];
+  if (btns.length !== 4) return;
+
+  const vw = innerWidth;
+  const vh = innerHeight;
+
+  const qRect = qBox.getBoundingClientRect();
+  const qBottom = Number.isFinite(qRect.bottom) ? qRect.bottom : 0;
+
+  const minTopFromQuestion = qBottom + Math.max(28, vh * 0.035);
+  let topY = Math.max(Math.round(vh * 0.31), Math.round(minTopFromQuestion));
+  topY = Math.min(topY, Math.round(vh * 0.58));
+
+  const edgePad = 6;
+
+  const presets = [
+    { font:'clamp(24px, 3.0dvw, 50px)', h:'clamp(100px, 13vh, 160px)', py:'12px', px:'18px', max:'22vw' },
+    { font:'clamp(22px, 2.6dvw, 44px)', h:'clamp(92px, 12vh, 145px)', py:'10px', px:'14px', max:'21vw' },
+    { font:'clamp(20px, 2.3dvw, 38px)', h:'clamp(84px, 11vh, 130px)', py:'8px', px:'12px', max:'20vw' },
+    { font:'clamp(18px, 2.0dvw, 34px)', h:'clamp(78px, 10vh, 118px)', py:'7px', px:'10px', max:'19vw' }
+  ];
+
+  let chosenPreset = presets[presets.length - 1];
+
+  // ✅ รอบเลือก preset: write รวม → read รวม ทีละ preset
+  for (const p of presets){
+    btns.forEach(btn=>{
+      btn.style.setProperty('--choice-font', p.font);
+      btn.style.setProperty('--choice-min-h', p.h);
+      btn.style.setProperty('--choice-pad-y', p.py);
+      btn.style.setProperty('--choice-pad-x', p.px);
+      btn.style.setProperty('--choice-max-w', p.max);
+    });
+
+    const widths = btns.map(btn => btn.getBoundingClientRect().width);
+    const totalW = widths.reduce((sum, w)=> sum + w, 0);
+    const gap = (vw - totalW) / 5;
+
+    chosenPreset = p;
+
+    if (gap >= edgePad) break;
+  }
+
+  // ✅ ยืนยัน preset สุดท้าย
+  btns.forEach(btn=>{
+    btn.style.setProperty('--choice-font', chosenPreset.font);
+    btn.style.setProperty('--choice-min-h', chosenPreset.h);
+    btn.style.setProperty('--choice-pad-y', chosenPreset.py);
+    btn.style.setProperty('--choice-pad-x', chosenPreset.px);
+    btn.style.setProperty('--choice-max-w', chosenPreset.max);
+  });
+
+  // ✅ Shrink label font-size ถ้าข้อความยาวเกินกล่อง (ไม่ตัดบรรทัด)
+  btns.forEach(btn=>{
+    const label = btn.querySelector('.label');
+    if (!label) return;
+    label.style.fontSize = '';
+    const maxW = btn.getBoundingClientRect().width - (parseFloat(chosenPreset.px) || 12) * 2;
+    if (label.scrollWidth > maxW && maxW > 0){
+      let fs = parseFloat(getComputedStyle(label).fontSize);
+      while (label.scrollWidth > maxW && fs > 10){
+        fs -= 1;
+        label.style.fontSize = fs + 'px';
+      }
+    }
+  });
+
+  // ✅ read phase รอบเดียว
+  requestAnimationFrame(()=>{
+    let widths = btns.map(btn => btn.getBoundingClientRect().width);
+    let totalW = widths.reduce((sum, w)=> sum + w, 0);
+    let gap = (vw - totalW) / 5;
+
+    // ถ้า gap ติดลบ (ปุ่มรวมกันเกินจอ) ให้บีบ max-width ให้พอดี
+    if (gap < edgePad){
+      const maxBtnW = Math.floor((vw - edgePad * 5) / 4);
+      btns.forEach(btn => { btn.style.maxWidth = maxBtnW + 'px'; });
+      widths = btns.map(btn => btn.getBoundingClientRect().width);
+      totalW = widths.reduce((sum, w)=> sum + w, 0);
+      gap = Math.max(edgePad, (vw - totalW) / 5);
+    }
+
+    let x = gap;
+
+    // ✅ write phase รอบเดียว
+    btns.forEach((btn, i)=>{
+      btn.style.left = Math.round(x) + 'px';
+      btn.style.top = topY + 'px';
+      x += widths[i] + gap;
+    });
+  });
+}
+
+let __layoutSentenceTimer = null;
+
+window.addEventListener('resize', ()=>{
+  clearTimeout(__layoutSentenceTimer);
+  __layoutSentenceTimer = setTimeout(()=>{
+    layoutSentenceChoices();
+  }, 120);
+});
+
+window.addEventListener('orientationchange', ()=>{
+  setTimeout(()=>{
+    layoutSentenceChoices();
+  }, 250);
+});
+
+
+function clampNum(v, min, max){
+  return Math.max(min, Math.min(max, v));
+}
+
+  function waitForBothTransitions(els, timeoutMs=600){
+    const once = (node, type) => new Promise(res=>{
+      let done=false;
+      const h = ()=>{ if(!done){ done=true; node.removeEventListener(type,h); res(); } };
+      node.addEventListener(type, h, {once:true});
+      setTimeout(h, timeoutMs);
+    });
+    return Promise.all( (els||[]).map(n=> once(n,'transitionend')) );
+  }
+
+function tryAnswer(el){
+  trySentencePick(el);
+}
+
+function fitPickedText(){
+  qBox.style.fontSize = '';
+  qBox.style.whiteSpace = 'nowrap';
+
+  const maxW = innerWidth * 0.88;
+  let size = parseFloat(getComputedStyle(qBox).fontSize);
+
+  while (qBox.scrollWidth > maxW && size > 26){
+    size -= 2;
+    qBox.style.fontSize = size + 'px';
+  }
+}
+
+async function trySentencePick(el){
+  if (ended) return;
+  if (!awaitingAnswer) return;
+  if (!currentQuestion) return;
+  if (el.classList.contains('picked')) return;
+
+  playSfx(selectSound, VOL_SELECT);
+
+  const text = el.dataset.text || '';
+  const orderIndex = Number(el.dataset.orderIndex);
+
+  pickedSentenceParts.push(text);
+  pickedSentenceOrders.push(orderIndex);
+
+el.classList.add('picked');
+
+el.addEventListener('animationend', ()=>{
+  el.remove();
+}, { once:true });
+
+qBox.textContent = pickedSentenceParts.join(' ');
+fitPickedText();
+
+if (pickedSentenceParts.length < 3) return;
+
+  awaitingAnswer = false;
+    await waitMs(500);
+  const ok = pickedSentenceOrders.every((n, i)=> n === i);
+if (ok){
+  playSentenceTalkSound(currentQuestion);
+}
+
+  document.querySelectorAll('.option.sentence-choice:not(.picked)').forEach(btn=>{
+    btn.style.pointerEvents = 'none';
+    btn.classList.add('fade-out');
+    btn.addEventListener('animationend', ()=> btn.remove(), {once:true});
+  });
+
+  // ✅ ลบปุ่มที่เลือกแล้วแบบเงียบ ๆ ไม่เล่น fade
+  document.querySelectorAll('.option.sentence-choice.picked').forEach(btn=>{
+    btn.remove();
+  });
+
+  qBox.classList.remove('in-pre','in-go','out-left','out-right');
+  qBox.classList.add('fx');
+  qBox.style.opacity = '1';
+
+  const fadeMs = parseInt(
+    getComputedStyle(document.documentElement).getPropertyValue('--fade-ms')
+  ) || 600;
+
+  setTimeout(()=>{
+    endRound(ok, el, false);
+  }, fadeMs + 40);
+}
+
+  async function endRound(ok, pickedElOrNull, timeout=false){
+    clearInterval(roundTimer); stopTimebar();
+
+    await playStage3Clash(ok);
+
+if (ok) score += 2;
+else score = Math.max(0, score - 1);
+
+updateHUD();
+
+const NEXT_ROUND_DELAY_MS = 1100; 
+
+setTimeout(()=>{
+  if (ended || !document.body.classList.contains('in-game')) return;
+
+  clearRoundObjects();
+  qBox.textContent='';
+  qBox.style.opacity='1';
+  if(qImg){ qImg.style.display='none'; qImg.removeAttribute('src'); }
+
+  round++;
+  updateHUD();
+  nextRound();
+}, NEXT_ROUND_DELAY_MS);
+
+  }
+
+function drawQuestion(){
+  return makeSentenceQuestion(window.currentLevel);
+}
+
+
+function nextRound(){
+  if (ended) return;
+
+  clearRoundObjects();
+  awaitingAnswer = false;
+  stopTimebar();
+  qBox.textContent = '';
+    qBox.style.opacity = '1';
+    qBox.style.transition = '';
+
+  currentQuestion = null;
+  pickedSentenceParts = [];
+  pickedSentenceOrders = [];
+
+  // ✅ ก่อนเข้าช่วงเลือกคำตอบ ยังใช้อีโมจิเหมือนเดิม
+  startEmojiGate(()=>{
+    if (ended) return;
+
+    setTimeout(()=>{
+      const q = drawQuestion();
+      currentQuestion = q;
+
+      dropQuestion(q.question || '', q.img);
+
+      setTimeout(()=>{
+        spawnSentenceChoices(q);
+        awaitingAnswer = true;
+      }, OPT_IN_MS);
+
+    }, Q_DROP_MS + Q_HOLD_MS);
+  });
+}
+
+  function startGame(){
+    document.body.classList.remove('prestart');
+    document.body.classList.add('in-game');
+    running = true;
+        setEnded(false);
+        paused = false;
+    overlay.style.visibility='hidden'; overlay.style.opacity='0';
+
+    score=0; round=0;
+    updateHUD();
+
+    // ✅ รีเซ็ตหัวใจทุกครั้งที่เริ่มเกม
+    hearts = 5;
+    renderHearts();
+
+    startGameTimer();
+    nextRound();
+  }
+
+  function endLevel(reasonText){
+    setEnded(true);
+        running = false;
+
+    clearGateEmojis();
+    emojiGateActive = false;
+    emojiGateDoneCb = null;
+
+    clearGameTimer();
+    stopClockUI();
+
+    awaitingAnswer = false;
+    stopTimebar();
+    clearRoundObjects();
+    qBox.textContent = '';
+    qBox.style.display = 'none';
+    if (qImg){
+      qImg.style.display = 'none';
+      qImg.removeAttribute('src');
+    }
+    game.style.visibility = 'hidden';
+
+    finalScoreEl.textContent = String(score);
+
+    const badgeEl = document.getElementById('scoreBadge');
+    badgeEl.textContent = getBadgeEmoji(score);
+
+    const endTitle = document.getElementById('endTitle');
+    if (endTitle){
+      endTitle.textContent = (reasonText === 'หมดหัวใจ') ? 'หมดหัวใจ' : 'หมดเวลา';
+    }
+
+    bgm?.pause?.();
+    winSound?.play?.().catch(()=>{});
+
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity    = '1';
+  }
+
+  function getBadgeEmoji(sc){
+    if (sc <= 5)  return '❤️';
+    if (sc <= 10) return '🥇';
+    if (sc <= 15) return '🏆';
+    return '🏆';
+  }
+
+  function pauseGame(){
+    if(!running||paused) return;
+    paused = true;
+    clearInterval(roundTimer);
+    document.querySelectorAll('.option').forEach(n=> n.style.pointerEvents='none');
+
+    // ✅ ตอนหยุดเกม ให้ปิดการเก็บอีโมจิชั่วคราว (แต่ไม่ลบ)
+    pauseGameTimer();
+  }
+
+  function resumeGame(){
+    if(!paused||ended)return;
+    paused=false;
+    document.querySelectorAll('.option').forEach(n=> n.style.pointerEvents='auto');
+    bgm?.play?.().catch(()=>{});
+    resumeGameTimer();
+  }
+
+  document.getElementById('pauseBtn')?.addEventListener('click', ()=>{
+    if(!paused){ pauseGame(); document.getElementById('pauseBtn').textContent='▶️ ต่อ'; }
+    else { resumeGame(); document.getElementById('pauseBtn').textContent='⏸ หยุด'; }
+  });
+
+document.getElementById('quickRestart')?.addEventListener('click', ()=>{
+  clearCountdown();
+  overlay.style.visibility='hidden';
+  overlay.style.opacity='0';
+  resetState();
+
+  document.body.classList.remove('in-game','prestart');
+
+  document.getElementById('heroSelectScreen').style.display = 'none';
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('landing').classList.remove('hide');
+
+  // ซ่อนพื้นหลังเกมเมื่อกลับหน้าเลือกด่าน
+  const bgLayer = document.getElementById('gameBgLayer');
+  if (bgLayer) bgLayer.classList.remove('active');
+
+  bgm.currentTime = 0;
+  bgm.play().catch(()=>{});
+});
+
+  restartBtn.addEventListener('click', ()=>{
+    overlay.style.visibility='hidden';
+    overlay.style.opacity='0';
+    resetState();
+    bgm.currentTime = 0;
+    bgm.play().catch(()=>{});
+    startGame();
+  });
+
+  selectLevelBtn.addEventListener('click', ()=>{
+    clearCountdown();
+    overlay.style.visibility='hidden';
+    overlay.style.opacity='0';
+    resetState();
+    document.body.classList.remove('in-game','prestart');
+    document.getElementById('landing').classList.remove('hide');
+    document.getElementById('startScreen').style.display='none';
+
+    // ซ่อนพื้นหลังเกมเมื่อกลับหน้าเลือกด่าน
+    const bgLayer = document.getElementById('gameBgLayer');
+    if (bgLayer) bgLayer.classList.remove('active');
+
+    bgm.currentTime = 0;
+    bgm.play().catch(()=>{});
+  });
+
+  // start screen
+  const startScreen  = document.getElementById('startScreen');
+  const startBtn     = document.getElementById('startBtn');
+  const countdownEl  = document.getElementById('countdown');
+    const heroSelectScreen = document.getElementById('heroSelectScreen');
+    const heroChooser = document.getElementById('heroChooser');
+
+  let countdownItv = null;
+
+function clearCountdown(){
+  if (countdownItv){
+    clearInterval(countdownItv);
+    countdownItv = null;
+  }
+
+  countdownEl.style.display = 'none';
+  countdownEl.textContent = '3';
+
+  if (startBtn){
+    startBtn.style.display = 'inline-block';
+    startBtn.disabled = false;
+    startBtn.style.pointerEvents = 'auto';
+  }
+}
+
+document.querySelectorAll('.levelBtn[data-level]').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    window.currentLevel = Number(btn.dataset.level || 1);
+    setMissionByLevel(window.currentLevel);
+
+    // ===== สุ่มพื้นหลังเมื่อเลือกด่าน =====
+    const bgCount = 4;
+    const bgNum = Math.floor(Math.random() * bgCount) + 1;
+    const bgLayer = document.getElementById('gameBgLayer');
+    if (bgLayer) {
+      bgLayer.style.backgroundImage = `url("image/bg${bgNum}.png")`;
+      bgLayer.classList.add('active');
+    }
+    // ======================================
+
+    document.getElementById('landing').classList.add('hide');
+    heroSelectScreen.style.display = 'none';
+    startScreen.style.display = 'none';
+
+    // แสดง HUD/ปุ่มระบบตั้งแต่หน้าเลือกตัวละคร
+    document.body.classList.add('prestart');
+
+    clearCountdown();
+
+    const ok = await preloadLevelAssets(window.currentLevel);
+
+    if (!ok) return;
+
+    hideLevelPreloadUI();
+    heroSelectScreen.style.display = 'flex';
+  });
+});
+
+document.querySelectorAll('.heroPick').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    selectedHero = Number(btn.dataset.hero || 1);
+
+    heroSelectScreen.style.display = 'none';
+    startScreen.style.display = 'flex';
+
+    const startTitle = document.getElementById('startTitle');
+    if (startTitle){
+      startTitle.style.display = 'flex';
+      startTitle.style.opacity = '1';
+      startTitle.style.visibility = 'visible';
+    }
+
+    clearCountdown();
+  });
+});
+
+  document.getElementById('guideBtn')?.addEventListener('click', ()=>{
+    document.getElementById('landing').classList.add('hide');
+    document.getElementById('guideScreen').style.display='flex';
+  });
+  document.getElementById('guideBack')?.addEventListener('click', ()=>{
+    document.getElementById('guideScreen').style.display='none';
+    document.getElementById('landing').classList.remove('hide');
+  });
+
+  // visibility pause
+  let wasRunning=false;
+
+startBtn?.addEventListener('click', ()=>{
+  clearCountdown();
+
+  if(startBtn.disabled) return;
+
+  startBtn.disabled = true;
+  startBtn.style.pointerEvents = 'none';
+  startBtn.style.display = 'none';
+
+  let n = 3;
+  countdownEl.textContent = n;
+  countdownEl.style.display = 'block';
+
+  countdownItv = setInterval(() => {
+    n--;
+
+    if (n > 0){
+      countdownEl.textContent = n;
+    } else {
+      clearInterval(countdownItv);
+      countdownItv = null;
+      startScreen.style.display = 'none';
+      startGame();
+
+      startBtn.disabled = false;
+      startBtn.style.pointerEvents = 'auto';
+    }
+  }, 1000);
+});
+
+  function uiBlockingOpen(){
+    const landing=document.getElementById('landing');
+    const startOpen = startScreen && startScreen.style.display!=='none';
+    const guide=document.getElementById('guideScreen');
+    const guideOpen = getComputedStyle(guide).display!=='none';
+    const overlayOpen = overlay.style.visibility==='visible';
+    return overlayOpen || (!landing.classList.contains('hide')) || startOpen || guideOpen;
+  }
+  function handleHidden(){ wasRunning = running && !ended && !uiBlockingOpen(); if(wasRunning) pauseGame() }
+  function handleVisible(){ if(wasRunning && paused && !ended && !uiBlockingOpen()) resumeGame(); wasRunning=false }
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) handleHidden(); else handleVisible() });
+  window.addEventListener('blur', handleHidden); window.addEventListener('focus', handleVisible);
+
+  // ✅ แสดงหัวใจครั้งแรก + คะแนนเริ่มต้น
+  renderHearts();
+  renderGold(0);
+
+})();
+</script>
+
+<!-- ===== Pose (มือเป็นวงกลมแตะเลือกช้อยส์ + แตะอีโมจิ tap-target ได้เหมือนเดิม) ===== -->
+<script type="module">
+import {PoseLandmarker, FilesetResolver} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+const camBtn = document.getElementById('camBtn');
+const video  = document.getElementById('cameraMirror');
+const cvs    = document.getElementById('camCanvas');
+const ctx    = cvs.getContext('2d', { alpha: true });
+const DETECT_W = 320;
+let detectCanvas = document.createElement('canvas');
+let detectCtx = detectCanvas.getContext('2d', { alpha:false, desynchronized:true });
+let CAM_ON=false, landmarker=null, raf=0, stream=null;
+
+function fitCanvas(){ const dpr = CAM_ON? 1 : Math.max(1, window.devicePixelRatio||1); cvs.width=Math.round(innerWidth*dpr); cvs.height=Math.round(innerHeight*dpr); cvs.style.width=innerWidth+'px'; cvs.style.height=innerHeight+'px'; ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr,dpr) }
+fitCanvas(); addEventListener('resize', fitCanvas);
+function coverCropRect(){ const vw=video.videoWidth||640, vh=video.videoHeight||480; const sw=innerWidth, sh=innerHeight; const scale=Math.max(sw/vw, sh/vh); const sW=Math.round(sw/scale), sH=Math.round(sh/scale); const sX=Math.round((vw-sW)/2), sY=Math.round((vh-sH)/2); return {sX,sY,sW,sH,vw,vh,sw,sh} }
+function mapToScreen(nx,ny){ const {sX,sY,sW,sH,vw,vh,sw,sh} = coverCropRect(); const px=nx*vw, py=ny*vh; const u=(px-sX)/sW, v=(py-sY)/sH; let x=u*sw, y=v*sh; x=sw-x; return {x,y} }
+
+const SHOW_HAND_BALL=false;
+const lastHitAt=new WeakMap();
+const HIT_LOCK_MS=160;
+function circleIntersectsRect(cx,cy,r, rc){
+  const nx=Math.max(rc.left, Math.min(cx, rc.right));
+  const ny=Math.max(rc.top,  Math.min(cy, rc.bottom));
+  const dx=cx-nx, dy=cy-ny;
+  return (dx*dx+dy*dy)<=r*r
+}
+
+function hitByCircle(center, r){
+  if (window.ended) return;
+  const opts = [...document.querySelectorAll('.option, .tap-target')];
+  for (const n of opts){
+    const rc = n.getBoundingClientRect();
+    if (circleIntersectsRect(center.x, center.y, r, rc)){
+      const t = performance.now();
+      const last = lastHitAt.get(n) || 0;
+      if (t - last < HIT_LOCK_MS) continue;
+      lastHitAt.set(n, t);
+      n.click();
+    }
+  }
+}
+
+async function ensureLandmarker(){
+  if(landmarker) return landmarker;
+  const fileset = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+  landmarker = await PoseLandmarker.createFromOptions(fileset, {
+    baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task" },
+    runningMode:'VIDEO', numPoses:1, minPoseDetectionConfidence:.35, minPosePresenceConfidence:.35, minTrackingConfidence:.35
+  });
+  return landmarker
+}
+function drawHandBall(elbowIdx, wristIdx, lm){
+  if(!lm[elbowIdx]||!lm[wristIdx]) return null;
+  const elbow = mapToScreen(lm[elbowIdx].x, lm[elbowIdx].y);
+  const wrist = mapToScreen(lm[wristIdx].x, lm[wristIdx].y);
+  const r=24;
+  const L=Math.max(1, Math.hypot(wrist.x-elbow.x, wrist.y-elbow.y));
+  const ux=(wrist.x-elbow.x)/L, uy=(wrist.y-elbow.y)/L;
+  const HAND_PUSH=1.5, PUSH_PX=6;
+  const center={ x: wrist.x + ux*(r*HAND_PUSH+PUSH_PX), y: wrist.y + uy*(r*HAND_PUSH+PUSH_PX) };
+  if(SHOW_HAND_BALL){
+    ctx.beginPath(); ctx.arc(center.x,center.y,r,0,Math.PI*2);
+    ctx.fillStyle='#fff'; ctx.fill();
+    ctx.lineWidth=3; ctx.strokeStyle='#fff'; ctx.stroke();
+  }
+  hitByCircle(center, r*.95);
+  return center
+}
+function drawPoseAndColliders(res){
+  const sw=innerWidth, sh=innerHeight;
+  ctx.clearRect(0,0,sw,sh);
+  if(!res?.landmarks?.length) return;
+  const lm=res.landmarks[0];
+  drawHandBall(13,15,lm);
+  drawHandBall(14,16,lm)
+}
+function runLoop(){
+  const step=()=>{
+    if(!video.videoWidth){ raf=requestAnimationFrame(step); return }
+    const now=performance.now();
+    try{
+      const {sX,sY,sW,sH}=coverCropRect();
+      detectCtx.drawImage(video, sX,sY,sW,sH, 0,0, detectCanvas.width, detectCanvas.height);
+      const res=landmarker.detectForVideo(detectCanvas, now);
+      drawPoseAndColliders(res)
+    }catch(e){}
+    raf=requestAnimationFrame(step)
+  };
+  raf=requestAnimationFrame(step)
+}
+async function startCamera(){
+  await ensureLandmarker();
+  stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 960, height: 540, frameRate: 30, facingMode: 'user' },
+    audio: false
+  });
+  video.srcObject=stream;
+  await video.play().catch(()=>{});
+  const vw=video.videoWidth||640, vh=video.videoHeight||480;
+  const ratio=vw/vh;
+  detectCanvas.width=DETECT_W;
+  detectCanvas.height=Math.round(DETECT_W/ratio);
+  video.style.display='block';
+  cvs.style.display='block';
+  camBtn.textContent='📷 กล้อง: เปิด';
+  CAM_ON=true; fitCanvas(); runLoop()
+}
+function stopCamera(){
+  cancelAnimationFrame(raf);
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null }
+  try{ video.pause() }catch(e){}
+  video.removeAttribute('srcObject');
+  video.style.display='none';
+  cvs.style.display='none';
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  camBtn.textContent='📷 กล้อง: ปิด';
+  CAM_ON=false; fitCanvas()
+}
+camBtn.addEventListener('click', async ()=>{
+  if(!stream){
+    try{ await startCamera() }
+    catch(err){ camBtn.textContent='📷 กล้อง: ไม่ได้รับอนุญาต'; camBtn.disabled=true }
+  } else { stopCamera() }
+});
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden && stream) stopCamera() });
+</script>
+
+<!-- ===== เมนู/เริ่มเกม ===== -->
+<script>
+(()=> {
+  const landing = document.getElementById('landing');
+  const startScreen = document.getElementById('startScreen');
+  const guideScreen = document.getElementById('guideScreen');
+  document.getElementById('guideBtn')?.addEventListener('click', ()=>{
+    landing.classList.add('hide');
+    guideScreen.style.display='flex'
+  });
+  document.getElementById('guideBack')?.addEventListener('click', ()=>{
+    guideScreen.style.display='none';
+    landing.classList.remove('hide')
+  });
+})();
+</script>
+
+</body>
+</html>
